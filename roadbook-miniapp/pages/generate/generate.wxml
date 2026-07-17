@@ -1,15 +1,31 @@
 <view class="container">
-  <!-- Card 1: 起终点 -->
+  <!-- 起终点 -->
   <view class="card">
     <view class="card-title">📍 起终点</view>
     <view class="point-row" bindtap="onStartTap">
       <view class="point-icon start">起</view>
-      <text class="point-text {{startName?'':'placeholder'}}">{{startName || '点击选择出发地'}}</text>
+      <text class="point-text {{startName?'':'placeholder'}}">{{startName || '点击地图选点（模拟器可输坐标）'}}</text>
     </view>
-    <view class="connector"></view>
+    <!-- 手动坐标输入 -->
+    <view wx:if="{{showStartInput}}" class="coord-input">
+      <input placeholder="经度,纬度 如 104.0657,30.6574" value="{{startCoordInput}}" bindinput="e=>startCoordInput=e.detail.value" confirm-type="done" bindconfirm="onStartCoordSubmit" />
+      <button size="mini" bindtap="onStartCoordSubmit">确定</button>
+    </view>
+    <view class="connector">┃</view>
     <view class="point-row" bindtap="onEndTap">
       <view class="point-icon end">终</view>
-      <text class="point-text {{endName?'':'placeholder'}}">{{endName || '点击选择目的地（可选，默认返回起点）'}}</text>
+      <text class="point-text {{endName?'':'placeholder'}}">{{endName || '点击地图选点（可选）'}}</text>
+    </view>
+    <view wx:if="{{showEndInput}}" class="coord-input">
+      <input placeholder="经度,纬度" value="{{endCoordInput}}" bindinput="e=>endCoordInput=e.detail.value" confirm-type="done" bindconfirm="onEndCoordSubmit" />
+      <button size="mini" bindtap="onEndCoordSubmit">确定</button>
+    </view>
+    <!-- 快捷城市 -->
+    <view class="quick-row">
+      <text class="label">快捷起点:</text>
+      <scroll-view scroll-x class="quick-scroll">
+        <view class="quick-chip" wx:for="{{quickCities}}" wx:key="name" data-index="{{index}}" bindtap="onQuickLoc">{{item.name}}</view>
+      </scroll-view>
     </view>
     <view class="stepper-row">
       <text class="label">行程天数</text>
@@ -21,7 +37,7 @@
     </view>
   </view>
 
-  <!-- Card 2: 偏好 -->
+  <!-- 偏好 -->
   <view class="card">
     <view class="card-title">🎯 偏好设置</view>
     <view class="section-label">难度</view>
@@ -35,13 +51,11 @@
       <view wx:for="{{allTags}}" wx:key="*this" class="tag-chip {{tags.indexOf(item)>-1?'active':''}}" data-tag="{{item}}" bindtap="onTagToggle">{{item}}</view>
     </scroll-view>
     <view class="section-label">每日驾驶时长</view>
-    <view class="slider-row">
-      <text class="slider-value">{{dailyHours}}h</text>
-    </view>
+    <text class="slider-value">{{dailyHours}}小时</text>
     <slider min="2" max="8" step="0.5" value="{{dailyHours}}" bindchange="onSliderChange" activeColor="#2E7D32" />
   </view>
 
-  <!-- Card 3: 热门模板 -->
+  <!-- 热门模板 -->
   <view class="card" wx:if="{{popularTemplates.length}}">
     <view class="card-title">🔥 热门模板</view>
     <scroll-view scroll-x class="template-scroll">
@@ -53,12 +67,6 @@
     </scroll-view>
   </view>
 
-  <!-- Vehicle info -->
-  <view class="vehicle-bar" wx:if="{{vehicleInfo}}">
-    <text class="vehicle-text">🚗 {{vehicleInfo.brand}} · 续航{{vehicleInfo.range}}km</text>
-  </view>
-
-  <!-- Generate button -->
   <button class="generate-btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">
     🚀 生成我的路书
   </button>

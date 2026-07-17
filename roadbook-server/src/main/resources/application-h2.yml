@@ -18,4 +18,4 @@ app:
     key: 51153aa8760dfcc56a2ff579cd5963b9
   wechat:
     appid: wx779bb87ab22d48fb
-    secret: dev
+    secret: wx
