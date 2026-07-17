@@ -1,0 +1,10 @@
+<view class="login-container">
+  <view class="logo-area">
+    <text class="app-name">🚙 路书</text>
+    <text class="slogan">你的自驾路书助手</text>
+  </view>
+  <button class="wechat-btn" bindtap="handleLogin" loading="{{loading}}" open-type="getUserInfo">
+    微信一键登录
+  </button>
+  <text class="tip">登录即同意用户协议和隐私政策</text>
+</view>

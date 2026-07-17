@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/generate/generate",
+    "pages/route-detail/route-detail",
+    "pages/dashboard/dashboard"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#2E7D32",
+    "navigationBarTitleText": "路书",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f5f5f5"
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于获取当前位置和周边推荐"
+    }
+  }
+}
