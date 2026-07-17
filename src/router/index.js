@@ -3,6 +3,11 @@ import Layout from '../views/Layout.vue'
 
 const routes = [
   {
+    path: '/login',
+    name: 'Login',
+    component: () => import('../views/Login.vue'),
+  },
+  {
     path: '/',
     redirect: '/dashboard',
     component: Layout,
@@ -49,6 +54,15 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
+})
+
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('admin_token')
+  if (!token && to.path !== '/login') {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router
