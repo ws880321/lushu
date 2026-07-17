@@ -4,14 +4,16 @@
     <view class="card-title">📍 起终点</view>
     <!-- 起点 -->
     <view class="input-row">
-      <input class="point-input" placeholder="输入起点城市或地址" value="{{startText}}" bindinput="onStartInput" />
+      <input class="point-input" placeholder="输入起点城市或地址" value="{{startText}}" bindinput="onStartInput" bindconfirm="onStartSubmit" confirm-type="done" />
+      <button class="ok-btn" size="mini" bindtap="onStartSubmit">确认</button>
       <button class="picker-btn" size="mini" bindtap="openPicker" data-target="start">省市▾</button>
       <button class="map-btn" size="mini" bindtap="onStartTap">地图</button>
     </view>
     <!-- 终点 -->
     <view class="connector">⇣</view>
     <view class="input-row">
-      <input class="point-input" placeholder="输入终点（可选，默认返回起点）" value="{{endText}}" bindinput="onEndInput" />
+      <input class="point-input" placeholder="输入终点（可选，默认返回起点）" value="{{endText}}" bindinput="onEndInput" bindconfirm="onEndSubmit" confirm-type="done" />
+      <button class="ok-btn" size="mini" bindtap="onEndSubmit">确认</button>
       <button class="picker-btn" size="mini" bindtap="openPicker" data-target="end">省市▾</button>
       <button class="map-btn" size="mini" bindtap="onEndTap">地图</button>
     </view>
