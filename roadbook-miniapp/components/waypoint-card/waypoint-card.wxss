@@ -1,0 +1,110 @@
+.card {
+  display: flex;
+  margin-bottom: 12rpx;
+}
+
+.left-gutter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 48rpx;
+  flex-shrink: 0;
+}
+
+.dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  background: #2E7D32;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.dot.break {
+  background: #FF9800;
+  width: 14rpx;
+  height: 14rpx;
+}
+
+.line {
+  width: 2rpx;
+  flex: 1;
+  background: #ddd;
+  min-height: 32rpx;
+}
+
+.body {
+  flex: 1;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-left: 16rpx;
+  box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.04);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.type-badge {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: #e8f5e9;
+  color: #2E7D32;
+  margin-left: 12rpx;
+}
+
+.type-badge.restaurant {
+  background: #fff3e0;
+  color: #E65100;
+}
+
+.type-badge.scenic {
+  background: #e3f2fd;
+  color: #1565C0;
+}
+
+.type-badge.gas {
+  background: #fce4ec;
+  color: #C62828;
+}
+
+.type-badge.hotel {
+  background: #f3e5f5;
+  color: #6A1B9A;
+}
+
+.arrival {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-top: 8rpx;
+}
+
+.tips {
+  font-size: 24rpx;
+  color: #888;
+  display: block;
+  margin-top: 8rpx;
+}
+
+.footer {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 10rpx;
+}
+
+.meta {
+  font-size: 22rpx;
+  color: #aaa;
+}

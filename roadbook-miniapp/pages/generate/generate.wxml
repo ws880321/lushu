@@ -1,0 +1,65 @@
+<view class="container">
+  <!-- Card 1: 起终点 -->
+  <view class="card">
+    <view class="card-title">📍 起终点</view>
+    <view class="point-row" bindtap="onStartTap">
+      <view class="point-icon start">起</view>
+      <text class="point-text {{startName?'':'placeholder'}}">{{startName || '点击选择出发地'}}</text>
+    </view>
+    <view class="connector"></view>
+    <view class="point-row" bindtap="onEndTap">
+      <view class="point-icon end">终</view>
+      <text class="point-text {{endName?'':'placeholder'}}">{{endName || '点击选择目的地（可选，默认返回起点）'}}</text>
+    </view>
+    <view class="stepper-row">
+      <text class="label">行程天数</text>
+      <view class="stepper">
+        <view class="step-btn" bindtap="onDayMinus">−</view>
+        <text class="step-value">{{totalDays}}</text>
+        <view class="step-btn" bindtap="onDayPlus">+</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Card 2: 偏好 -->
+  <view class="card">
+    <view class="card-title">🎯 偏好设置</view>
+    <view class="section-label">难度</view>
+    <view class="difficulty-row">
+      <view class="diff-pill {{difficulty==='easy'?'active':''}}" data-diff="easy" bindtap="onDifficultyTap">轻松</view>
+      <view class="diff-pill {{difficulty==='medium'?'active':''}}" data-diff="medium" bindtap="onDifficultyTap">中等</view>
+      <view class="diff-pill {{difficulty==='hard'?'active':''}}" data-diff="hard" bindtap="onDifficultyTap">挑战</view>
+    </view>
+    <view class="section-label">兴趣标签</view>
+    <scroll-view scroll-x class="tag-scroll">
+      <view wx:for="{{allTags}}" wx:key="*this" class="tag-chip {{tags.indexOf(item)>-1?'active':''}}" data-tag="{{item}}" bindtap="onTagToggle">{{item}}</view>
+    </scroll-view>
+    <view class="section-label">每日驾驶时长</view>
+    <view class="slider-row">
+      <text class="slider-value">{{dailyHours}}h</text>
+    </view>
+    <slider min="2" max="8" step="0.5" value="{{dailyHours}}" bindchange="onSliderChange" activeColor="#2E7D32" />
+  </view>
+
+  <!-- Card 3: 热门模板 -->
+  <view class="card" wx:if="{{popularTemplates.length}}">
+    <view class="card-title">🔥 热门模板</view>
+    <scroll-view scroll-x class="template-scroll">
+      <view class="template-card" wx:for="{{popularTemplates}}" wx:key="id" data-template="{{item}}" bindtap="onTemplateTap">
+        <text class="tpl-name">{{item.name}}</text>
+        <text class="tpl-region">{{item.region}}</text>
+        <text class="tpl-days">{{item.totalDays}}天</text>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- Vehicle info -->
+  <view class="vehicle-bar" wx:if="{{vehicleInfo}}">
+    <text class="vehicle-text">🚗 {{vehicleInfo.brand}} · 续航{{vehicleInfo.range}}km</text>
+  </view>
+
+  <!-- Generate button -->
+  <button class="generate-btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">
+    🚀 生成我的路书
+  </button>
+</view>

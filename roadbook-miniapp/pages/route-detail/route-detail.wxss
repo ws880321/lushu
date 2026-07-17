@@ -1,0 +1,195 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Map area */
+.map-area {
+  position: relative;
+  height: 460rpx;
+  flex-shrink: 0;
+}
+
+.map-overlay {
+  position: absolute;
+  top: 16rpx;
+  left: 16rpx;
+  right: 16rpx;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.overlay-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #333;
+  display: block;
+}
+
+.overlay-info {
+  font-size: 24rpx;
+  color: #888;
+  margin-top: 8rpx;
+  display: block;
+}
+
+/* Day tabs */
+.day-tabs {
+  position: absolute;
+  bottom: 16rpx;
+  left: 16rpx;
+  right: 16rpx;
+  white-space: nowrap;
+}
+
+.day-tab {
+  display: inline-block;
+  padding: 12rpx 28rpx;
+  border-radius: 40rpx;
+  font-size: 26rpx;
+  color: #666;
+  background: rgba(255, 255, 255, 0.9);
+  margin-right: 12rpx;
+  backdrop-filter: blur(8px);
+}
+
+.day-tab.active {
+  background: #2E7D32;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* Timeline */
+.timeline {
+  flex: 1;
+  padding: 24rpx;
+  background: #f5f5f5;
+}
+
+.day-header {
+  padding: 16rpx 0 24rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.waypoint {
+  display: flex;
+  margin-bottom: 8rpx;
+}
+
+.wp-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100rpx;
+  flex-shrink: 0;
+}
+
+.wp-time {
+  font-size: 22rpx;
+  color: #999;
+  white-space: nowrap;
+  margin-bottom: 8rpx;
+}
+
+.wp-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: #2E7D32;
+  flex-shrink: 0;
+  z-index: 1;
+}
+
+.wp-dot.break {
+  background: #FF9800;
+  width: 16rpx;
+  height: 16rpx;
+}
+
+.wp-line {
+  width: 2rpx;
+  flex: 1;
+  background: #ddd;
+  min-height: 40rpx;
+}
+
+.wp-content {
+  flex: 1;
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx 24rpx;
+  margin-left: 20rpx;
+  margin-bottom: 16rpx;
+  box-shadow: 0 1rpx 6rpx rgba(0, 0, 0, 0.04);
+}
+
+.wp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wp-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  flex: 1;
+}
+
+.wp-type {
+  font-size: 22rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  background: #e8f5e9;
+  color: #2E7D32;
+  margin-left: 12rpx;
+}
+
+.wp-type.restaurant {
+  background: #fff3e0;
+  color: #E65100;
+}
+
+.wp-type.scenic {
+  background: #e3f2fd;
+  color: #1565C0;
+}
+
+.wp-type.gas {
+  background: #fce4ec;
+  color: #C62828;
+}
+
+.wp-type.hotel {
+  background: #f3e5f5;
+  color: #6A1B9A;
+}
+
+.wp-desc {
+  font-size: 24rpx;
+  color: #888;
+  margin-top: 12rpx;
+  display: block;
+}
+
+.wp-meta {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.meta-item {
+  font-size: 22rpx;
+  color: #aaa;
+}
+
+/* Break special */
+.waypoint.break .wp-dot {
+  background: #FF9800;
+}

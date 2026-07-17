@@ -1,0 +1,58 @@
+<view class="container">
+  <!-- Map area -->
+  <view class="map-area">
+    <map id="routeMap"
+      longitude="{{centerLng}}"
+      latitude="{{centerLat}}"
+      scale="9"
+      show-location
+      polyline="{{polylines}}"
+      markers="{{markers}}"
+      style="width:100%;height:100%"
+      bindmarkertap="onMarkerTap" />
+    <view class="map-overlay">
+      <text class="overlay-title">{{route.title}}</text>
+      <text class="overlay-info">{{route.totalDistanceKm}}km · {{route.totalDays}}天 · ¥{{route.estimatedCost.totalYuan}}</text>
+    </view>
+    <scroll-view scroll-x class="day-tabs">
+      <view
+        class="day-tab {{activeDay===item.day?'active':''}}"
+        wx:for="{{route.itinerary}}"
+        wx:key="day"
+        data-day="{{item.day}}"
+        bindtap="onDayTab">
+        第{{item.day}}天
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- Timeline -->
+  <scroll-view scroll-y class="timeline" wx:if="{{currentDay}}">
+    <view class="day-header">
+      <text>Day {{currentDay.day}} · {{currentDay.distanceKm}}km · {{currentDay.driveTimeMin}}分钟</text>
+    </view>
+    <view
+      class="waypoint {{item.isBreak?'break':''}}"
+      wx:for="{{currentDay.waypoints}}"
+      wx:key="sort"
+      data-index="{{index}}"
+      bindtap="onWaypointTap">
+      <view class="wp-left">
+        <text class="wp-time">{{item.arrival}}</text>
+        <view class="wp-dot {{item.isBreak?'break':''}}"></view>
+        <view class="wp-line" wx:if="{{index < currentDay.waypoints.length - 1}}"></view>
+      </view>
+      <view class="wp-content">
+        <view class="wp-header">
+          <text class="wp-name">{{item.name}}</text>
+          <text class="wp-type {{item.type}}">{{item.type}}</text>
+        </view>
+        <text class="wp-desc" wx:if="{{item.tips}}">💡 {{item.tips}}</text>
+        <view class="wp-meta" wx:if="{{item.driveFromPrevKm || item.driveScore}}">
+          <text class="meta-item" wx:if="{{item.driveFromPrevKm}}">{{item.driveFromPrevKm}}km</text>
+          <text class="meta-item" wx:if="{{item.driveScore}}">评分 {{item.driveScore}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

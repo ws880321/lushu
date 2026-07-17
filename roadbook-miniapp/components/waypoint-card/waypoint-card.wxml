@@ -1,0 +1,18 @@
+<view class="card {{type}}">
+  <view class="left-gutter">
+    <view class="dot {{type}}"></view>
+    <view class="line" wx:if="{{!isLast}}"></view>
+  </view>
+  <view class="body">
+    <view class="header">
+      <text class="name">{{name}}</text>
+      <text class="type-badge {{type}}">{{typeLabel}}</text>
+    </view>
+    <text class="arrival">预计到达 {{arrival}}</text>
+    <text class="tips" wx:if="{{tips}}">💡 {{tips}}</text>
+    <view class="footer" wx:if="{{driveFromPrevKm || driveScore}}">
+      <text class="meta" wx:if="{{driveFromPrevKm}}">{{driveFromPrevKm}}km</text>
+      <text class="meta" wx:if="{{driveScore}}">评分 {{driveScore}}</text>
+    </view>
+  </view>
+</view>

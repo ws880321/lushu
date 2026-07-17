@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "路书详情",
+  "usingComponents": {
+    "waypoint-card": "/components/waypoint-card/waypoint-card"
+  }
+}
