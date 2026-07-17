@@ -96,7 +96,8 @@ public class VehicleService {
 
     /**
      * Set a vehicle as the user's default. All other vehicles for this user
-     * are set to non-default first, then the target vehicle is set as default.
+     * are cleared of their default status first, then the target vehicle
+     * is set as default. Uses a single bulk update to avoid race conditions.
      *
      * @param userId    the authenticated user ID
      * @param vehicleId the vehicle ID to set as default
@@ -112,14 +113,8 @@ public class VehicleService {
             throw new IllegalArgumentException("VEHICLE_NOT_OWNED");
         }
 
-        // Clear existing defaults for this user
-        List<Vehicle> userVehicles = vehicleRepository.findByUserId(userId);
-        for (Vehicle v : userVehicles) {
-            if (v.getIsDefault() == 1) {
-                v.setIsDefault(0);
-                vehicleRepository.save(v);
-            }
-        }
+        // Bulk clear all defaults for this user in a single update
+        vehicleRepository.clearDefaultsByUserId(userId);
 
         // Set the target as default
         target.setIsDefault(1);

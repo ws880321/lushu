@@ -4,6 +4,7 @@ import com.roadbook.common.ApiResponse;
 import com.roadbook.common.ErrorCode;
 import com.roadbook.vehicle.entity.Vehicle;
 import com.roadbook.vehicle.service.VehicleService;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +31,7 @@ public class VehicleController {
     @PostMapping
     public ApiResponse<Vehicle> create(
             @RequestAttribute("userId") Long userId,
-            @RequestBody Vehicle vehicle) {
+            @Valid @RequestBody Vehicle vehicle) {
         try {
             Vehicle saved = vehicleService.create(userId, vehicle);
             return ApiResponse.success(saved);

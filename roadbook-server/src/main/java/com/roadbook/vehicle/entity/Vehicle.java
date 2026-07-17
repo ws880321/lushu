@@ -1,6 +1,8 @@
 package com.roadbook.vehicle.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -21,6 +23,7 @@ public class Vehicle {
     @Column(length = 64)
     private String brand;
 
+    @NotNull @NotBlank
     @Column(nullable = false, length = 16)
     private String fuelType;
 

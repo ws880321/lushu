@@ -3,28 +3,26 @@ package com.roadbook.route.controller;
 import com.roadbook.common.ApiResponse;
 import com.roadbook.common.ErrorCode;
 import com.roadbook.route.entity.UserFavorite;
-import com.roadbook.route.repository.UserFavoriteRepository;
+import com.roadbook.route.service.FavoriteService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/favorites")
 public class FavoriteController {
 
-    private final UserFavoriteRepository userFavoriteRepository;
+    private final FavoriteService favoriteService;
 
-    public FavoriteController(UserFavoriteRepository userFavoriteRepository) {
-        this.userFavoriteRepository = userFavoriteRepository;
+    public FavoriteController(FavoriteService favoriteService) {
+        this.favoriteService = favoriteService;
     }
 
     /**
-     * Add a favorite. If the same (userId, favType, targetId) already exists,
-     * returns the existing record without creating a duplicate.
+     * Add a favorite.
      *
      * @param userId authenticated user ID from JWT interceptor
      * @param body   JSON body with "favType" and "targetId"
@@ -48,20 +46,7 @@ public class FavoriteController {
             return ApiResponse.error(ErrorCode.BAD_REQUEST, "targetId must be a number");
         }
 
-        // Check for existing favorite to avoid duplicates
-        Optional<UserFavorite> existing = userFavoriteRepository
-                .findByUserIdAndFavTypeAndTargetId(userId, favType, targetId);
-        if (existing.isPresent()) {
-            return ApiResponse.success(existing.get());
-        }
-
-        UserFavorite fav = new UserFavorite();
-        fav.setUserId(userId);
-        fav.setFavType(favType);
-        fav.setTargetId(targetId);
-
-        UserFavorite saved = userFavoriteRepository.save(fav);
-        log.info("User {} favorited {}#{}", userId, favType, targetId);
+        UserFavorite saved = favoriteService.add(userId, favType, targetId);
         return ApiResponse.success(saved);
     }
 
@@ -79,7 +64,7 @@ public class FavoriteController {
         if (type == null || type.isBlank()) {
             return ApiResponse.error(ErrorCode.BAD_REQUEST, "type parameter is required");
         }
-        List<UserFavorite> favorites = userFavoriteRepository.findByUserIdAndFavType(userId, type);
+        List<UserFavorite> favorites = favoriteService.listByType(userId, type);
         return ApiResponse.success(favorites);
     }
 
@@ -96,18 +81,14 @@ public class FavoriteController {
             @RequestAttribute("userId") Long userId,
             @RequestParam("type") String type,
             @RequestParam("targetId") Long targetId) {
-        if (type == null || type.isBlank() || targetId == null) {
-            return ApiResponse.error(ErrorCode.BAD_REQUEST, "type and targetId are required");
+        if (type == null || type.isBlank()) {
+            return ApiResponse.error(ErrorCode.BAD_REQUEST, "type parameter is required");
         }
 
-        Optional<UserFavorite> existing = userFavoriteRepository
-                .findByUserIdAndFavTypeAndTargetId(userId, type, targetId);
-        if (existing.isEmpty()) {
+        boolean removed = favoriteService.remove(userId, type, targetId);
+        if (!removed) {
             return ApiResponse.error(ErrorCode.NOT_FOUND, "Favorite not found");
         }
-
-        userFavoriteRepository.delete(existing.get());
-        log.info("User {} unfavorited {}#{}", userId, type, targetId);
         return ApiResponse.success(null);
     }
 }
