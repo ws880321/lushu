@@ -1,6 +1,7 @@
 package com.roadbook.template.repository;
 
 import com.roadbook.template.entity.RouteTemplate;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -17,4 +18,9 @@ public interface TemplateRepository extends JpaRepository<RouteTemplate, Long> {
      * Use Pageable to limit results efficiently at the query level.
      */
     List<RouteTemplate> findByStatusOrderByUsageCountDesc(Integer status, Pageable pageable);
+
+    /**
+     * Find templates whose region contains the given string, paginated.
+     */
+    Page<RouteTemplate> findByRegionContaining(String region, Pageable pageable);
 }

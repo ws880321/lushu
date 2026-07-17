@@ -8,4 +8,6 @@ import java.util.List;
 public interface TemplateWaypointRepository extends JpaRepository<TemplateWaypoint, Long> {
 
     List<TemplateWaypoint> findByTemplateIdOrderByDayNumberAscSortOrderAsc(Long templateId);
+
+    void deleteByTemplateId(Long templateId);
 }

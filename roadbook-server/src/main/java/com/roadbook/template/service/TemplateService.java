@@ -4,7 +4,9 @@ import com.roadbook.template.entity.RouteTemplate;
 import com.roadbook.template.entity.TemplateWaypoint;
 import com.roadbook.template.repository.TemplateRepository;
 import com.roadbook.template.repository.TemplateWaypointRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -87,6 +89,109 @@ public class TemplateService {
      */
     public List<RouteTemplate> listPopular(int limit) {
         return templateRepository.findByStatusOrderByUsageCountDesc(ACTIVE_STATUS, PageRequest.of(0, Math.max(1, limit)));
+    }
+
+    /**
+     * Paginated list of all templates (including inactive) with optional region filter.
+     */
+    public Page<RouteTemplate> findAll(String region, int page, int size) {
+        if (region != null && !region.isBlank()) {
+            return templateRepository.findByRegionContaining(region, PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+        }
+        return templateRepository.findAll(PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+    }
+
+    /**
+     * Find a template by ID.
+     */
+    public RouteTemplate findById(Long id) {
+        return templateRepository.findById(id).orElse(null);
+    }
+
+    /**
+     * Create a new template.
+     */
+    @Transactional
+    public RouteTemplate create(RouteTemplate template) {
+        template.setUsageCount(0);
+        template.setStatus(1);
+        return templateRepository.save(template);
+    }
+
+    /**
+     * Update an existing template.
+     */
+    @Transactional
+    public RouteTemplate update(Long id, RouteTemplate data) {
+        RouteTemplate existing = templateRepository.findById(id).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+        existing.setName(data.getName());
+        existing.setRegion(data.getRegion());
+        existing.setTotalDays(data.getTotalDays());
+        existing.setTotalDistance(data.getTotalDistance());
+        existing.setBestSeason(data.getBestSeason());
+        existing.setDifficulty(data.getDifficulty());
+        existing.setTags(data.getTags());
+        if (data.getCoverImage() != null) {
+            existing.setCoverImage(data.getCoverImage());
+        }
+        return templateRepository.save(existing);
+    }
+
+    /**
+     * Delete a template by ID.
+     */
+    @Transactional
+    public boolean delete(Long id) {
+        if (!templateRepository.existsById(id)) {
+            return false;
+        }
+        waypointRepository.deleteByTemplateId(id);
+        templateRepository.deleteById(id);
+        return true;
+    }
+
+    /**
+     * Add a waypoint to a template.
+     */
+    @Transactional
+    public TemplateWaypoint addWaypoint(TemplateWaypoint waypoint) {
+        return waypointRepository.save(waypoint);
+    }
+
+    /**
+     * Update a waypoint.
+     */
+    @Transactional
+    public TemplateWaypoint updateWaypoint(Long wpId, TemplateWaypoint data) {
+        TemplateWaypoint existing = waypointRepository.findById(wpId).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+        existing.setSortOrder(data.getSortOrder());
+        existing.setDayNumber(data.getDayNumber());
+        existing.setPointType(data.getPointType());
+        existing.setName(data.getName());
+        existing.setLng(data.getLng());
+        existing.setLat(data.getLat());
+        existing.setPoiId(data.getPoiId());
+        existing.setStayDuration(data.getStayDuration());
+        existing.setTips(data.getTips());
+        return waypointRepository.save(existing);
+    }
+
+    /**
+     * Delete a waypoint by ID.
+     */
+    @Transactional
+    public boolean deleteWaypoint(Long wpId) {
+        if (!waypointRepository.existsById(wpId)) {
+            return false;
+        }
+        waypointRepository.deleteById(wpId);
+        return true;
     }
 
     /**
