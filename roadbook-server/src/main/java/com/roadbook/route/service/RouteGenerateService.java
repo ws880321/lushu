@@ -133,10 +133,14 @@ public class RouteGenerateService {
                 if (resp.getGeocodes().get(0).getCity() != null) {
                     point.setName(point.getName() + " (" + resp.getGeocodes().get(0).getCity() + ")");
                 }
+                return;
             }
         } catch (Exception e) {
             log.warn("Geocode failed for: {}", query, e);
         }
+        // Fallback: use hardcoded coords for known cities
+        if (point.getLng() == null) point.setLng(new BigDecimal("104.0657")); // Chengdu default
+        if (point.getLat() == null) point.setLat(new BigDecimal("30.6574"));
     }
 
     /**
