@@ -12,6 +12,8 @@ import com.roadbook.route.dto.RouteDetailResponse.FuelStop;
 import com.roadbook.route.dto.RouteDetailResponse.WaypointDetail;
 import com.roadbook.route.service.RouteGenerateService;
 import com.roadbook.route.service.RouteService;
+import com.roadbook.template.entity.RouteTemplate;
+import com.roadbook.template.service.TemplateService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -27,10 +29,13 @@ public class RouteController {
 
     private final RouteGenerateService routeGenerateService;
     private final RouteService routeService;
+    private final TemplateService templateService;
 
-    public RouteController(RouteGenerateService routeGenerateService, RouteService routeService) {
+    public RouteController(RouteGenerateService routeGenerateService, RouteService routeService,
+                           TemplateService templateService) {
         this.routeGenerateService = routeGenerateService;
         this.routeService = routeService;
+        this.templateService = templateService;
     }
 
     /**
@@ -41,7 +46,7 @@ public class RouteController {
      * @return detailed route response
      */
     @PostMapping("/generate")
-    public ApiResponse<RouteDetailResponse> generate(
+    public ApiResponse<?> generate(
             @RequestAttribute("userId") Long userId,
             @Valid @RequestBody RouteGenerateRequest req) {
         try {
@@ -49,7 +54,17 @@ public class RouteController {
             return ApiResponse.success(response);
         } catch (RuntimeException e) {
             if ("TEMPLATE_NOT_FOUND".equals(e.getMessage())) {
-                return ApiResponse.error(ErrorCode.TEMPLATE_NOT_FOUND);
+                ApiResponse<Map<String, Object>> resp = ApiResponse.error(ErrorCode.TEMPLATE_NOT_FOUND, "未找到匹配模板");
+                String region = "四川";
+                List<RouteTemplate> alts = templateService.getAlternatives(region, req.getTotalDays());
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("suggestion", "为您推荐以下路线方案");
+                data.put("alternatives", alts.stream().map(t -> Map.of(
+                    "id", t.getId(), "name", t.getName(), "region", t.getRegion(),
+                    "totalDays", t.getTotalDays(), "difficulty", t.getDifficulty()
+                )).toList());
+                resp.setData(data);
+                return resp;
             }
             log.error("Route generation failed for user {}: {}", userId, e.getMessage(), e);
             return ApiResponse.error(ErrorCode.INTERNAL_ERROR);

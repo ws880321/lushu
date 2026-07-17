@@ -78,6 +78,30 @@ public class TemplateService {
     }
 
     /**
+     * Get nearby alternative templates when no exact match is found.
+     */
+    public List<RouteTemplate> getAlternatives(String region, int totalDays) {
+        List<RouteTemplate> result = new ArrayList<>();
+        String nr = (region != null) ? region.trim() : null;
+
+        if (nr != null && !nr.isEmpty()) {
+            result.addAll(templateRepository
+                    .findByRegionAndStatusAndTotalDaysBetween(nr, 1, 1, 365)
+                    .stream()
+                    .filter(t -> t.getTotalDays() != totalDays)
+                    .sorted(Comparator.comparingInt(t -> Math.abs(t.getTotalDays() - totalDays)))
+                    .limit(5).toList());
+        }
+        result.addAll(templateRepository
+                .findByStatusOrderByUsageCountDesc(1, PageRequest.of(0, 20))
+                .stream()
+                .filter(t -> Math.abs(t.getTotalDays() - totalDays) <= 2 && !result.contains(t))
+                .sorted(Comparator.comparingInt(t -> Math.abs(t.getTotalDays() - totalDays)))
+                .limit(5).toList());
+        return result.stream().distinct().limit(6).toList();
+    }
+
+    /**
      * Get all waypoints for a given template, ordered by day and sort order.
      */
     public List<TemplateWaypoint> getWaypoints(Long templateId) {
