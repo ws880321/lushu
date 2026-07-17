@@ -69,16 +69,15 @@ public class WechatAuthService {
     }
 
     private String resolveOpenid(String code) {
-        if (wechatAppId == null || wechatAppId.isEmpty()
-                || "your-wechat-app-secret".equals(wechatSecret)) {
+        if (wechatSecret == null || wechatSecret.length() < 20) {
             return "mock_" + java.util.UUID.randomUUID().toString().replace("-", "");
         }
+        String url = "https://api.weixin.qq.com/sns/jscode2session"
+                + "?appid=" + wechatAppId
+                + "&secret=" + wechatSecret
+                + "&js_code=" + code
+                + "&grant_type=authorization_code";
         try {
-            String url = "https://api.weixin.qq.com/sns/jscode2session"
-                    + "?appid=" + wechatAppId
-                    + "&secret=" + wechatSecret
-                    + "&js_code=" + code
-                    + "&grant_type=authorization_code";
             HttpClient client = HttpClient.newHttpClient();
             HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).GET().build();
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

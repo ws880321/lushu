@@ -18,4 +18,4 @@ app:
     key: your-amap-key-here
   wechat:
     appid: wx779bb87ab22d48fb
-    secret: ${WECHAT_APP_SECRET:your-wechat-app-secret}
+    secret: ${WECHAT_APP_SECRET:56838335eb4b8d6c4206dccdd83514e7}
