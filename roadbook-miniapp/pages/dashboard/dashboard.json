@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "正在路上",
+  "usingComponents": {
+    "alert-item": "/components/alert-item/alert-item"
+  }
+}

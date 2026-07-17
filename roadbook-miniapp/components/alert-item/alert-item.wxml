@@ -1,0 +1,10 @@
+<view class="alert-item {{item.level}}" bindtap="onTap">
+  <view class="alert-icon">
+    {{item.level === 'critical' ? '🔴' : item.level === 'warning' ? '🟠' : '🔵'}}
+  </view>
+  <view class="alert-body">
+    <text class="alert-title">{{item.title}}</text>
+    <text class="alert-desc">{{item.description}}</text>
+    <text class="alert-dist">{{item.distanceM}}m</text>
+  </view>
+</view>

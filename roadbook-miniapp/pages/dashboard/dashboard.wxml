@@ -1,0 +1,54 @@
+<view class="dashboard">
+  <!-- Mini map with current location -->
+  <view class="mini-map-wrap">
+    <map
+      longitude="{{currentLng}}"
+      latitude="{{currentLat}}"
+      scale="13"
+      show-location
+      markers="{{positionMarker}}"
+      style="width:100%;height:350rpx"
+    />
+    <view class="location-label">📍 距下一站 {{nextDistance}}km · 预计 {{nextArrival}}</view>
+  </view>
+
+  <!-- Vehicle status card -->
+  <view class="card status-card">
+    <view class="fuel-row">
+      <text>⛽ 剩余续航</text>
+      <progress
+        percent="{{fuelPercent}}"
+        activeColor="{{fuelPercent > 30 ? '#2E7D32' : '#E53935'}}"
+        stroke-width="16"
+      />
+      <text class="fuel-text">
+        {{fuelLeft}}km / {{fuelMax}}km
+        <text class="fuel-status {{fuelPercent > 30 ? 'ok' : 'warn'}}">
+          {{fuelPercent > 30 ? '✅ 够用' : '⚠️ 需加油'}}
+        </text>
+      </text>
+    </view>
+    <view class="trip-row">
+      <text>到终点还需约 {{toEndKm}}km · 还需加油 {{stopsNeeded}}次</text>
+    </view>
+  </view>
+
+  <!-- Nearby supply points -->
+  <view class="card">
+    <view class="card-title">📍 周边补给</view>
+    <view class="alert-list">
+      <alert-item
+        wx:for="{{nearbyAlerts}}"
+        wx:key="id"
+        item="{{item}}"
+        bind:alertTap="onAlertTap"
+      />
+    </view>
+    <view wx:if="{{nearbyAlerts.length === 0}}" class="empty">暂无周边补给信息</view>
+  </view>
+
+  <!-- Caravan placeholder (V2) -->
+  <view class="card caravan-placeholder">
+    <text>🚙 车队功能即将上线 · 敬请期待</text>
+  </view>
+</view>
