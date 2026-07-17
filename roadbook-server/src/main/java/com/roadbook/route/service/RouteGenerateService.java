@@ -1,6 +1,7 @@
 package com.roadbook.route.service;
 
 import com.roadbook.amap.AmapClient;
+import com.roadbook.amap.dto.DrivingRouteResponse;
 import com.roadbook.amap.dto.GeoCodeResponse;
 import com.roadbook.route.dto.RouteDetailResponse;
 import com.roadbook.route.dto.RouteDetailResponse.DayItinerary;
@@ -33,11 +34,11 @@ import java.util.stream.Collectors;
 public class RouteGenerateService {
 
     private static final double TOLL_RATE_PER_KM = 0.15;
-    private static final double FUEL_RATE_PER_KM = 0.5;
+    private static final double FUEL_RATE_PER_KM = 0.50;
     private static final int DAY_START_HOUR = 8;
     private static final int DAY_START_MINUTE = 0;
-    private static final double MIN_DISTANCE_KM = 50.0;
-    private static final double MAX_RANDOM_DISTANCE = 80.0;
+    private static final double AVG_SPEED_KMH = 60.0;
+    private static final double FALLBACK_DIST_KM = 30.0;
 
     private final TemplateService templateService;
     private final AmapClient amapClient;
@@ -130,8 +131,8 @@ public class RouteGenerateService {
     }
 
     /**
-     * Build route waypoints from template waypoints, calculating arrival/departure times.
-     * Days start at 08:00. Each waypoint accumulates stay duration.
+     * Build route waypoints from template waypoints, calculating real distances
+     * via Amap driving route API and arrival/departure times.
      */
     private List<RouteWaypoint> buildWaypoints(Long routeId, List<TemplateWaypoint> twps,
                                                 RouteGenerateRequest.Preferences preferences) {
@@ -139,21 +140,24 @@ public class RouteGenerateService {
             return Collections.emptyList();
         }
 
-        // Group template waypoints by day
         Map<Integer, List<TemplateWaypoint>> dayGroups = twps.stream()
                 .collect(Collectors.groupingBy(TemplateWaypoint::getDayNumber, TreeMap::new, Collectors.toList()));
 
         List<RouteWaypoint> result = new ArrayList<>();
-        Random random = new Random();
+        double totalMeters = 0;
 
         for (Map.Entry<Integer, List<TemplateWaypoint>> entry : dayGroups.entrySet()) {
             int day = entry.getKey();
             List<TemplateWaypoint> dayWaypoints = entry.getValue();
+            List<Double> dayDistancesM = fetchDayDistances(dayWaypoints);
 
-            // Each day starts at 08:00
             LocalTime currentTime = LocalTime.of(DAY_START_HOUR, DAY_START_MINUTE);
 
-            for (TemplateWaypoint twp : dayWaypoints) {
+            for (int i = 0; i < dayWaypoints.size(); i++) {
+                TemplateWaypoint twp = dayWaypoints.get(i);
+                double prevDistM = (i > 0) ? dayDistancesM.get(i - 1) : 0;
+                totalMeters += prevDistM;
+
                 RouteWaypoint rwp = new RouteWaypoint();
                 rwp.setRouteId(routeId);
                 rwp.setDayNumber(day);
@@ -164,43 +168,64 @@ public class RouteGenerateService {
                 rwp.setLat(twp.getLat());
                 rwp.setPoiId(twp.getPoiId());
 
-                // Arrival time is the current accumulated time
+                // Add driving time from previous point
+                int driveMin = (int) Math.ceil(prevDistM / 1000.0 / AVG_SPEED_KMH * 60);
+                int arrivalMin = currentTime.getHour() * 60 + currentTime.getMinute() + driveMin;
+                currentTime = LocalTime.of((arrivalMin / 60) % 24, arrivalMin % 60);
                 rwp.setArrivalTime(currentTime);
 
-                // Calculate stay duration (default 60 minutes for scenic spots, 30 for others)
-                int stay = twp.getStayDuration() != null
-                        ? twp.getStayDuration()
+                int stay = twp.getStayDuration() != null ? twp.getStayDuration()
                         : ("scenic".equals(twp.getPointType()) ? 60 : 30);
                 rwp.setStayDuration(stay);
 
-                // Departure time = arrival + stay
-                int arrivalMinute = currentTime.getHour() * 60 + currentTime.getMinute();
-                int departureMinute = arrivalMinute + stay;
-                int depHour = (departureMinute / 60) % 24;
-                int depMin = departureMinute % 60;
-                rwp.setDepartureTime(LocalTime.of(depHour, depMin));
-
-                // Advance current time for next waypoint (arrival only, travel time handled separately)
+                int depMin = currentTime.getHour() * 60 + currentTime.getMinute() + stay;
+                rwp.setDepartureTime(LocalTime.of((depMin / 60) % 24, depMin % 60));
                 currentTime = rwp.getDepartureTime();
 
-                // Estimate distance from previous waypoint (simplified: random between 50-130 km)
-                int distKm = (int) (MIN_DISTANCE_KM + random.nextDouble() * MAX_RANDOM_DISTANCE);
-                rwp.setDistanceFromPrev(distKm * 1000); // stored in meters
+                rwp.setDistanceFromPrev((int) prevDistM);
 
-                // Mark gas/charging points as break points
                 String type = twp.getPointType() != null ? twp.getPointType() : "";
                 if ("gas".equals(type) || "charging".equals(type) || "service".equals(type)) {
                     rwp.setIsBreakPoint(1);
                 }
-
-                // Description from template tips
                 rwp.setDescription(twp.getTips());
-
                 result.add(rwp);
             }
         }
-
         return result;
+    }
+
+    /**
+     * Fetch real driving distances between consecutive waypoints via Amap API.
+     * Falls back to straight-line estimates on API error.
+     */
+    private List<Double> fetchDayDistances(List<TemplateWaypoint> twps) {
+        if (twps.size() <= 1) return Collections.emptyList();
+
+        List<Double> distances = new ArrayList<>();
+        for (int i = 1; i < twps.size(); i++) {
+            TemplateWaypoint from = twps.get(i - 1);
+            TemplateWaypoint to = twps.get(i);
+            double distM = FALLBACK_DIST_KM * 1000; // fallback
+            try {
+                String origin = from.getLng() + "," + from.getLat();
+                String dest = to.getLng() + "," + to.getLat();
+                DrivingRouteResponse resp = amapClient.drivingRoute(origin, dest, null);
+                if (resp != null && resp.getRoute() != null && resp.getRoute().getPaths() != null
+                        && !resp.getRoute().getPaths().isEmpty()) {
+                    distM = Double.parseDouble(resp.getRoute().getPaths().get(0).getDistance());
+                }
+            } catch (Exception e) {
+                // Estimate from coordinates as fallback
+                double dx = (to.getLng().doubleValue() - from.getLng().doubleValue()) * 85390;
+                double dy = (to.getLat().doubleValue() - from.getLat().doubleValue()) * 111320;
+                distM = Math.sqrt(dx * dx + dy * dy) * 1.4; // road factor
+            }
+            distances.add(distM);
+            // Rate-limit: pause between API calls
+            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+        }
+        return distances;
     }
 
     /**

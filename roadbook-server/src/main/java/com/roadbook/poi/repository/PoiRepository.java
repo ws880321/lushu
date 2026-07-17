@@ -73,4 +73,17 @@ public interface PoiRepository extends JpaRepository<Poi, Long> {
      * Find POIs by category and province (for admin querying).
      */
     List<Poi> findByCategoryAndProvince(String category, String province);
+
+    /**
+     * H2-compatible nearby search using coordinate distance approximation.
+     * 1 longitude degree ≈ 85,390m, 1 latitude degree ≈ 111,320m.
+     */
+    @Query("SELECT p FROM Poi p WHERE " +
+           "(:categoryList IS NULL OR p.category IN :categoryList) AND " +
+           "((p.lng - :lng) * (p.lng - :lng) * 85390 * 85390 + " +
+           " (p.lat - :lat) * (p.lat - :lat) * 111320 * 111320) <= :radiusSq")
+    List<Poi> findNearbySimple(@Param("lng") BigDecimal lng,
+                               @Param("lat") BigDecimal lat,
+                               @Param("radiusSq") double radiusSq,
+                               @Param("categoryList") List<String> categoryList);
 }
