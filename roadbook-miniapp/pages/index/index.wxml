@@ -17,7 +17,7 @@
   <view class="section">
     <text class="section-title">🔥 热门路线</text>
     <scroll-view scroll-x class="hot-scroll">
-      <view class="hot-card" wx:for="{{hotRoutes}}" wx:key="id" bindtap="goDetail" data-id="{{item.id}}">
+      <view class="hot-card" wx:for="{{hotRoutes}}" wx:key="id" bindtap="goGenerate">
         <text class="hot-name">{{item.name||item.title}}</text>
         <text class="hot-meta">{{item.region||''}} · {{item.totalDays}}天</text>
       </view>
