@@ -1,5 +1,6 @@
 package com.roadbook.route.service;
 
+import com.roadbook.ai.AiRouteGenerator;
 import com.roadbook.amap.AmapClient;
 import com.roadbook.amap.dto.DrivingRouteResponse;
 import com.roadbook.amap.dto.GeoCodeResponse;
@@ -44,6 +45,7 @@ public class RouteGenerateService {
     private final AmapClient amapClient;
     private final RouteRepository routeRepo;
     private final RouteWaypointRepository waypointRepo;
+    private final AiRouteGenerator aiGenerator;
 
     /**
      * Generate a complete route (roadbook) for the user.
@@ -63,26 +65,38 @@ public class RouteGenerateService {
                 req.getStartPoint().getLat().doubleValue());
         String province = extractProvince(regeo);
 
-        // 2. Match template using province, days, and tags
-        List<String> tags = req.getPreferences() != null
-                ? req.getPreferences().getTags()
-                : Collections.emptyList();
-        RouteTemplate template = templateService.match(province, req.getTotalDays(), tags)
-                .orElseThrow(() -> new RuntimeException("TEMPLATE_NOT_FOUND"));
-        templateService.incrementUsage(template.getId());
+        // 2. Try template match first, then AI fallback
+        List<String> tags = req.getPreferences() != null ? req.getPreferences().getTags() : Collections.emptyList();
+        RouteTemplate template = templateService.match(province, req.getTotalDays(), tags).orElse(null);
 
-        // 3. Get template waypoints
-        List<TemplateWaypoint> twps = templateService.getWaypoints(template.getId());
+        List<RouteWaypoint> waypoints;
+        Route route;
 
-        // 4. Create Route entity
-        Route route = buildRoute(userId, req, template);
-        route = routeRepo.save(route);
+        if (template != null) {
+            // Template generation
+            templateService.incrementUsage(template.getId());
+            List<TemplateWaypoint> twps = templateService.getWaypoints(template.getId());
+            route = buildRoute(userId, req, template);
+            route = routeRepo.save(route);
+            waypoints = buildWaypoints(route.getId(), twps, req.getPreferences());
+        } else {
+            // AI generation
+            log.info("Template not found for {}/{}days, using AI generator", province, req.getTotalDays());
+            AiRouteGenerator.AiRoute aiRoute = aiGenerator.generate(
+                req.getStartPoint().getName(), req.getEndPoint().getName(),
+                req.getTotalDays(), tags,
+                req.getPreferences() != null ? req.getPreferences().getDifficulty() : "medium",
+                req.getPreferences() != null && req.getPreferences().getDailyDriveHours() != null
+                    ? req.getPreferences().getDailyDriveHours() : 4.0);
+            if (aiRoute == null) {
+                throw new RuntimeException("TEMPLATE_NOT_FOUND");
+            }
+            route = buildRouteFromAi(userId, req, aiRoute);
+            route = routeRepo.save(route);
+            waypoints = buildWaypointsFromAi(route.getId(), aiRoute);
+        }
 
-        // 5. Copy template waypoints to route waypoints, calculate timeline
-        List<RouteWaypoint> waypoints = buildWaypoints(route.getId(), twps, req.getPreferences());
         waypointRepo.saveAll(waypoints);
-
-        // 6. Build and return response
         return buildResponse(route, waypoints, req);
     }
 
@@ -132,6 +146,58 @@ public class RouteGenerateService {
     /**
      * Build the Route entity from request and matched template.
      */
+    private Route buildRouteFromAi(Long userId, RouteGenerateRequest req, AiRouteGenerator.AiRoute aiRoute) {
+        Route route = new Route();
+        route.setUserId(userId);
+        route.setTitle(aiRoute.title());
+        route.setDescription(aiRoute.description());
+        route.setTotalDays(req.getTotalDays());
+        route.setStartPoint(req.getStartPoint().getName());
+        route.setEndPoint(req.getEndPoint().getName());
+        route.setStartLng(req.getStartPoint().getLng());
+        route.setStartLat(req.getStartPoint().getLat());
+        route.setEndLng(req.getEndPoint().getLng());
+        route.setEndLat(req.getEndPoint().getLat());
+        route.setTotalDistance(aiRoute.totalDistanceKm());
+        route.setStatus(1);
+        route.setIsPublic(0);
+        route.setViewCount(0);
+        return route;
+    }
+
+    private List<RouteWaypoint> buildWaypointsFromAi(Long routeId, AiRouteGenerator.AiRoute aiRoute) {
+        List<RouteWaypoint> result = new ArrayList<>();
+        int sort = 0;
+        for (AiRouteGenerator.AiWaypoint aw : aiRoute.waypoints()) {
+            sort++;
+            RouteWaypoint rwp = new RouteWaypoint();
+            rwp.setRouteId(routeId);
+            rwp.setSortOrder(sort);
+            rwp.setDayNumber(aw.day());
+            rwp.setPointType(aw.type() != null ? aw.type() : "scenic");
+            rwp.setName(aw.name());
+            rwp.setDescription(aw.tips());
+            rwp.setIsBreakPoint("gas".equals(aw.type()) || "charging".equals(aw.type()) ? 1 : 0);
+            rwp.setStayDuration(aw.stayMin() > 0 ? aw.stayMin() : 60);
+            result.add(rwp);
+        }
+        // Geocode AI waypoint names to get coordinates
+        for (RouteWaypoint rwp : result) {
+            try {
+                GeoCodeResponse resp = amapClient.geocode(rwp.getName());
+                if (resp != null && resp.getGeocodes() != null && !resp.getGeocodes().isEmpty()) {
+                    String[] parts = resp.getGeocodes().get(0).getLocation().split(",");
+                    rwp.setLng(new BigDecimal(parts[0]));
+                    rwp.setLat(new BigDecimal(parts[1]));
+                }
+            } catch (Exception e) {
+                log.debug("Geocode fallback for AI waypoint: {}", rwp.getName());
+            }
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        }
+        return result;
+    }
+
     private Route buildRoute(Long userId, RouteGenerateRequest req, RouteTemplate template) {
         Route route = new Route();
         route.setUserId(userId);

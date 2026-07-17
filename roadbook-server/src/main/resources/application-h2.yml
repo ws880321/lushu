@@ -19,3 +19,6 @@ app:
   wechat:
     appid: wx779bb87ab22d48fb
     secret: wx
+  deepseek:
+    key: ${DEEPSEEK_KEY:your-deepseek-key}
+    url: https://api.deepseek.com/v1/chat/completions
