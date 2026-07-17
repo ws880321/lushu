@@ -1,8 +1,10 @@
 {
   "pages": [
     "pages/login/login",
+    "pages/index/index",
     "pages/generate/generate",
     "pages/route-detail/route-detail",
+    "pages/record/record",
     "pages/dashboard/dashboard"
   ],
   "window": {
@@ -12,8 +14,6 @@
     "backgroundColor": "#f5f5f5"
   },
   "permission": {
-    "scope.userLocation": {
-      "desc": "用于获取当前位置和周边推荐"
-    }
+    "scope.userLocation": { "desc": "用于获取当前位置和周边推荐" }
   }
 }

@@ -1,0 +1,35 @@
+<view class="container">
+  <view class="card">
+    <view class="card-title">📍 记录行程点</view>
+    <input class="input" placeholder="地点名称（如：泸定桥）" value="{{name}}" bindinput="e=>name=e.detail.value" />
+    <view class="type-row">
+      <text class="label">类型</text>
+      <picker value="{{typeIdx}}" range="{{types}}" bindchange="onTypeChg">
+        <view class="picker-val">{{types[typeIdx]}}</view>
+      </picker>
+    </view>
+    <view class="day-row">
+      <text class="label">第几天</text>
+      <view class="stepper">
+        <view class="step-btn" bindtap="dayDown">−</view>
+        <text>{{dayNum}}</text>
+        <view class="step-btn" bindtap="dayUp">+</view>
+      </view>
+    </view>
+    <input class="input" placeholder="备注（如：停车费10元，路况好）" value="{{note}}" bindinput="e=>note=e.detail.value" />
+    <button class="loc-btn" bindtap="getLoc">
+      {{lng ? '已定位: ' + lng.toFixed(4) + ',' + lat.toFixed(4) : '📍 获取当前位置'}}
+    </button>
+    <button class="save-btn" bindtap="save" loading="{{saving}}">💾 记录此点</button>
+  </view>
+
+  <view class="card" wx:if="{{records.length}}">
+    <view class="card-title">📋 已记录 {{records.length}} 个点</view>
+    <view class="rec-item" wx:for="{{records}}" wx:key="idx">
+      <text class="rec-type">{{types[typesMap[item.type]||0]}}</text>
+      <text class="rec-name">{{item.name}}</text>
+      <text class="rec-day">D{{item.dayNumber}}</text>
+    </view>
+    <button class="finish-btn" bindtap="finish">✅ 完成行程记录</button>
+  </view>
+</view>

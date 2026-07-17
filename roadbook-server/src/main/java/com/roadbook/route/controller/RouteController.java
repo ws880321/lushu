@@ -2,14 +2,15 @@ package com.roadbook.route.controller;
 
 import com.roadbook.common.ApiResponse;
 import com.roadbook.common.ErrorCode;
-import com.roadbook.route.dto.RouteDetailResponse;
-import com.roadbook.route.dto.RouteGenerateRequest;
-import com.roadbook.route.entity.Route;
-import com.roadbook.route.entity.RouteWaypoint;
+import com.roadbook.route.dto.*;
 import com.roadbook.route.dto.RouteDetailResponse.DayItinerary;
 import com.roadbook.route.dto.RouteDetailResponse.EstimatedCost;
 import com.roadbook.route.dto.RouteDetailResponse.FuelStop;
 import com.roadbook.route.dto.RouteDetailResponse.WaypointDetail;
+import com.roadbook.route.entity.Route;
+import com.roadbook.route.entity.RouteWaypoint;
+import com.roadbook.route.repository.RouteRepository;
+import com.roadbook.route.repository.RouteWaypointRepository;
 import com.roadbook.route.service.RouteGenerateService;
 import com.roadbook.route.service.RouteService;
 import com.roadbook.template.entity.RouteTemplate;
@@ -19,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,12 +33,66 @@ public class RouteController {
     private final RouteGenerateService routeGenerateService;
     private final RouteService routeService;
     private final TemplateService templateService;
+    private final RouteWaypointRepository waypointRepo;
+    private final RouteRepository routeRepo;
 
     public RouteController(RouteGenerateService routeGenerateService, RouteService routeService,
-                           TemplateService templateService) {
+                           TemplateService templateService, RouteWaypointRepository waypointRepo,
+                           RouteRepository routeRepo) {
         this.routeGenerateService = routeGenerateService;
         this.routeService = routeService;
         this.templateService = templateService;
+        this.waypointRepo = waypointRepo;
+        this.routeRepo = routeRepo;
+    }
+
+    /**
+     * Record a manual trip waypoint — user documents their own journey.
+     */
+    @PostMapping("/record")
+    public ApiResponse<Map<String, Object>> recordWaypoint(
+            @RequestAttribute("userId") Long userId,
+            @RequestBody RecordWaypointRequest req) {
+        // Find or create active recording route
+        Route route = routeRepo.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, 2).orElse(null);
+        if (route == null) {
+            route = new Route();
+            route.setUserId(userId);
+            route.setTitle("行程记录 " + LocalDateTime.now().toString().substring(0, 10));
+            route.setTotalDays(1);
+            route.setStartPoint(req.getName() != null ? req.getName() : "新行程");
+            route.setEndPoint(req.getName() != null ? req.getName() : "待定");
+            route.setStartLng(req.getLng() != null ? BigDecimal.valueOf(req.getLng()) : BigDecimal.ZERO);
+            route.setStartLat(req.getLat() != null ? BigDecimal.valueOf(req.getLat()) : BigDecimal.ZERO);
+            route.setEndLng(req.getLng() != null ? BigDecimal.valueOf(req.getLng()) : BigDecimal.ZERO);
+            route.setEndLat(req.getLat() != null ? BigDecimal.valueOf(req.getLat()) : BigDecimal.ZERO);
+            route.setStatus(2); // 2 = recording
+            route.setIsPublic(0);
+            route.setViewCount(0);
+            route = routeRepo.save(route);
+        }
+        RouteWaypoint wp = new RouteWaypoint();
+        wp.setRouteId(route.getId());
+        wp.setName(req.getName());
+        wp.setLng(req.getLng() != null ? BigDecimal.valueOf(req.getLng()) : null);
+        wp.setLat(req.getLat() != null ? BigDecimal.valueOf(req.getLat()) : null);
+        wp.setPointType(req.getType() != null ? req.getType() : "custom");
+        wp.setDescription(req.getNote());
+        wp.setDayNumber(req.getDayNumber() != null ? req.getDayNumber() : 1);
+        wp.setSortOrder(waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(route.getId()).size() + 1);
+        wp = waypointRepo.save(wp);
+        return ApiResponse.success(Map.of("routeId", route.getId(), "waypointId", wp.getId()));
+    }
+
+    /**
+     * Finish recording a trip — set status to published.
+     */
+    @PostMapping("/{id}/finish")
+    public ApiResponse<Void> finishRecording(@PathVariable Long id) {
+        return routeRepo.findById(id).map(r -> {
+            r.setStatus(1); routeRepo.save(r);
+            return ApiResponse.<Void>success(null);
+        }).orElse(ApiResponse.error(ErrorCode.NOT_FOUND));
     }
 
     /**
