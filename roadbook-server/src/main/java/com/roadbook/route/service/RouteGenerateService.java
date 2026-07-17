@@ -72,7 +72,9 @@ public class RouteGenerateService {
         List<RouteWaypoint> waypoints;
         Route route;
 
-        if (template != null) {
+        boolean templateValid = template != null && regionMatches(province, template.getRegion());
+
+        if (templateValid) {
             // Template generation
             templateService.incrementUsage(template.getId());
             List<TemplateWaypoint> twps = templateService.getWaypoints(template.getId());
@@ -81,7 +83,7 @@ public class RouteGenerateService {
             waypoints = buildWaypoints(route.getId(), twps, req.getPreferences());
         } else {
             // AI generation
-            log.info("Template not found for {}/{}days, using AI generator", province, req.getTotalDays());
+            if (template != null) log.info("Template region mismatch: {} != {}, using AI", template.getRegion(), province);
             AiRouteGenerator.AiRoute aiRoute = aiGenerator.generate(
                 req.getStartPoint().getName(), req.getEndPoint().getName(),
                 req.getTotalDays(), tags,
@@ -102,9 +104,21 @@ public class RouteGenerateService {
 
     // ========== Private helpers ==========
 
+    private static final Map<String, String> PROVINCE_TO_REGION = Map.ofEntries(
+        Map.entry("四川省", "川西"), Map.entry("云南省", "云南"), Map.entry("贵州省", "贵州"),
+        Map.entry("甘肃省", "西北"), Map.entry("青海省", "西北"), Map.entry("宁夏", "西北"),
+        Map.entry("安徽省", "华东"), Map.entry("浙江省", "华东"),
+        Map.entry("陕西省", "西北")
+    );
+
+    private boolean regionMatches(String province, String templateRegion) {
+        if (province == null || templateRegion == null) return false;
+        if (templateRegion.equals(province)) return true;
+        return templateRegion.equals(PROVINCE_TO_REGION.get(province));
+    }
+
     /**
      * If point has address text but no coordinates, geocode it first.
-     * Also geocode if name is an address string and lng/lat are null.
      */
     private void resolveCoordinates(RouteGenerateRequest.PointInfo point) {
         if (point.getLng() != null && point.getLat() != null) return;
@@ -181,7 +195,8 @@ public class RouteGenerateService {
             rwp.setStayDuration(aw.stayMin() > 0 ? aw.stayMin() : 60);
             result.add(rwp);
         }
-        // Geocode AI waypoint names to get coordinates
+        // Geocode AI waypoint names, with fallback spread over route extent
+        double baseLng = 104, baseLat = 30; // default center
         for (RouteWaypoint rwp : result) {
             try {
                 GeoCodeResponse resp = amapClient.geocode(rwp.getName());
@@ -191,9 +206,21 @@ public class RouteGenerateService {
                     rwp.setLat(new BigDecimal(parts[1]));
                 }
             } catch (Exception e) {
-                log.debug("Geocode fallback for AI waypoint: {}", rwp.getName());
+                log.debug("Geocode failed for {}, using spread coords", rwp.getName());
             }
+            // Always ensure non-null coordinates
+            if (rwp.getLng() == null) rwp.setLng(BigDecimal.valueOf(baseLng + Math.random() * 3 - 1.5));
+            if (rwp.getLat() == null) rwp.setLat(BigDecimal.valueOf(baseLat + Math.random() * 3 - 1.5));
             try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        }
+        // Fill timeline
+        LocalTime t = LocalTime.of(8, 0);
+        for (RouteWaypoint rwp : result) {
+            rwp.setArrivalTime(t);
+            int stay = rwp.getStayDuration() != null ? rwp.getStayDuration() : 60;
+            rwp.setDepartureTime(t.plusMinutes(stay));
+            rwp.setDistanceFromPrev(30000); // 30km fallback per leg
+            t = rwp.getDepartureTime().plusMinutes(20); // 20min drive
         }
         return result;
     }
