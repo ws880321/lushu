@@ -17,3 +17,6 @@ app:
     expiration-ms: 604800000
   amap:
     key: ${AMAP_KEY}
+  wechat:
+    appid: ${WECHAT_APPID:wx779bb87ab22d48fb}
+    secret: ${WECHAT_SECRET}

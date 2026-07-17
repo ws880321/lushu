@@ -16,3 +16,6 @@ app:
     secret: dev-secret-key-do-not-use-in-production-123456
   amap:
     key: your-amap-key-here
+  wechat:
+    appid: wx779bb87ab22d48fb
+    secret: ${WECHAT_APP_SECRET:your-wechat-app-secret}
