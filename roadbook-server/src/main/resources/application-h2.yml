@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:roadbook;MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtMTIzNDU2Nzg5MDEyMzQ1
+    expiration-ms: 604800000
+  amap:
+    key: 51153aa8760dfcc56a2ff579cd5963b9
+  wechat:
+    appid: wx779bb87ab22d48fb
+    secret: dev
