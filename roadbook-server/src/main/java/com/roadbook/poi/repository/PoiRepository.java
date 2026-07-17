@@ -1,6 +1,8 @@
 package com.roadbook.poi.repository;
 
 import com.roadbook.poi.entity.Poi;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,6 +14,18 @@ import java.util.Optional;
 
 @Repository
 public interface PoiRepository extends JpaRepository<Poi, Long> {
+
+    /**
+     * Paginated query with optional category and province filters.
+     */
+    @Query("SELECT p FROM Poi p WHERE " +
+           "(:category IS NULL OR p.category = :category) AND " +
+           "(:province IS NULL OR p.province = :province) AND " +
+           "(:name IS NULL OR p.name LIKE %:name%)")
+    Page<Poi> findByFilters(@Param("category") String category,
+                            @Param("province") String province,
+                            @Param("name") String name,
+                            Pageable pageable);
 
     /**
      * Find POIs within a radius of a given coordinate using spatial distance calculation.
