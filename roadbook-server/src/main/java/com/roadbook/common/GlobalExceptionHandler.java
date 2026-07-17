@@ -22,7 +22,11 @@ public class GlobalExceptionHandler {
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             errors.put(fe.getField(), fe.getDefaultMessage());
         }
-        return ApiResponse.error(ErrorCode.BAD_REQUEST, "参数校验失败");
+        Map<String, Object> data = new HashMap<>();
+        data.put("errors", errors);
+        ApiResponse<Map<String, Object>> resp = ApiResponse.error(ErrorCode.BAD_REQUEST, "参数校验失败");
+        resp.setData(data);
+        return resp;
     }
 
     @ExceptionHandler(Exception.class)
