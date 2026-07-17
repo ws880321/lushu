@@ -53,6 +53,10 @@ public class RouteGenerateService {
      * @return detailed route response grouped by day
      */
     public RouteDetailResponse generate(Long userId, RouteGenerateRequest req) {
+        // 0. Resolve coordinates if only address/name is provided
+        resolveCoordinates(req.getStartPoint());
+        resolveCoordinates(req.getEndPoint());
+
         // 1. Reverse geocode start point to get province
         GeoCodeResponse regeo = amapClient.regeocode(
                 req.getStartPoint().getLng().doubleValue(),
@@ -83,6 +87,29 @@ public class RouteGenerateService {
     }
 
     // ========== Private helpers ==========
+
+    /**
+     * If point has address text but no coordinates, geocode it first.
+     * Also geocode if name is an address string and lng/lat are null.
+     */
+    private void resolveCoordinates(RouteGenerateRequest.PointInfo point) {
+        if (point.getLng() != null && point.getLat() != null) return;
+        String query = point.getAddress() != null ? point.getAddress() : point.getName();
+        if (query == null) return;
+        try {
+            GeoCodeResponse resp = amapClient.geocode(query);
+            if (resp != null && resp.getGeocodes() != null && !resp.getGeocodes().isEmpty()) {
+                String[] parts = resp.getGeocodes().get(0).getLocation().split(",");
+                point.setLng(new BigDecimal(parts[0]));
+                point.setLat(new BigDecimal(parts[1]));
+                if (resp.getGeocodes().get(0).getCity() != null) {
+                    point.setName(point.getName() + " (" + resp.getGeocodes().get(0).getCity() + ")");
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Geocode failed for: {}", query, e);
+        }
+    }
 
     /**
      * Extract province name from the reverse geocode response.

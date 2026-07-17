@@ -36,11 +36,9 @@ public class RouteGenerateRequest {
         @NotNull
         private String name;
 
-        @NotNull
         private BigDecimal lng;
-
-        @NotNull
         private BigDecimal lat;
+        private String address;
     }
 
     @Data

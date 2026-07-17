@@ -1,32 +1,26 @@
 <view class="container">
-  <!-- 起终点 -->
+  <!-- Card 1: 起终点 -->
   <view class="card">
     <view class="card-title">📍 起终点</view>
-    <view class="point-row" bindtap="onStartTap">
-      <view class="point-icon start">起</view>
-      <text class="point-text {{startName?'':'placeholder'}}">{{startName || '点击地图选点（模拟器可输坐标）'}}</text>
+    <!-- 起点 -->
+    <view class="input-row">
+      <input class="point-input" placeholder="输入起点城市或地址" value="{{startText}}" bindinput="onStartInput" />
+      <button class="picker-btn" size="mini" bindtap="openPicker" data-target="start">省市▾</button>
+      <button class="map-btn" size="mini" bindtap="onStartTap">地图</button>
     </view>
-    <!-- 手动坐标输入 -->
-    <view wx:if="{{showStartInput}}" class="coord-input">
-      <input placeholder="经度,纬度 如 104.0657,30.6574" value="{{startCoordInput}}" bindinput="e=>startCoordInput=e.detail.value" confirm-type="done" bindconfirm="onStartCoordSubmit" />
-      <button size="mini" bindtap="onStartCoordSubmit">确定</button>
+    <!-- 终点 -->
+    <view class="connector">⇣</view>
+    <view class="input-row">
+      <input class="point-input" placeholder="输入终点（可选，默认返回起点）" value="{{endText}}" bindinput="onEndInput" />
+      <button class="picker-btn" size="mini" bindtap="openPicker" data-target="end">省市▾</button>
+      <button class="map-btn" size="mini" bindtap="onEndTap">地图</button>
     </view>
-    <view class="connector">┃</view>
-    <view class="point-row" bindtap="onEndTap">
-      <view class="point-icon end">终</view>
-      <text class="point-text {{endName?'':'placeholder'}}">{{endName || '点击地图选点（可选）'}}</text>
+    <!-- Selected hint -->
+    <view wx:if="{{startName}}" class="selected-hint">
+      <text>📍 起点: {{startName}}</text>
+      <text wx:if="{{endName}}" style="margin-left:16px">🏁 终点: {{endName}}</text>
     </view>
-    <view wx:if="{{showEndInput}}" class="coord-input">
-      <input placeholder="经度,纬度" value="{{endCoordInput}}" bindinput="e=>endCoordInput=e.detail.value" confirm-type="done" bindconfirm="onEndCoordSubmit" />
-      <button size="mini" bindtap="onEndCoordSubmit">确定</button>
-    </view>
-    <!-- 快捷城市 -->
-    <view class="quick-row">
-      <text class="label">快捷起点:</text>
-      <scroll-view scroll-x class="quick-scroll">
-        <view class="quick-chip" wx:for="{{quickCities}}" wx:key="name" data-index="{{index}}" bindtap="onQuickLoc">{{item.name}}</view>
-      </scroll-view>
-    </view>
+    <!-- Days -->
     <view class="stepper-row">
       <text class="label">行程天数</text>
       <view class="stepper">
@@ -37,7 +31,7 @@
     </view>
   </view>
 
-  <!-- 偏好 -->
+  <!-- Card 2: 偏好 -->
   <view class="card">
     <view class="card-title">🎯 偏好设置</view>
     <view class="section-label">难度</view>
@@ -55,7 +49,7 @@
     <slider min="2" max="8" step="0.5" value="{{dailyHours}}" bindchange="onSliderChange" activeColor="#2E7D32" />
   </view>
 
-  <!-- 热门模板 -->
+  <!-- Card 3: 热门模板 -->
   <view class="card" wx:if="{{popularTemplates.length}}">
     <view class="card-title">🔥 热门模板</view>
     <scroll-view scroll-x class="template-scroll">
@@ -67,7 +61,27 @@
     </scroll-view>
   </view>
 
+  <!-- Generate -->
   <button class="generate-btn" bindtap="onGenerate" loading="{{generating}}" disabled="{{generating}}">
     🚀 生成我的路书
   </button>
+
+  <!-- Region Picker overlay -->
+  <view class="picker-overlay" wx:if="{{showRegionPicker}}">
+    <view class="picker-mask" bindtap="onRegionCancel"></view>
+    <view class="picker-body">
+      <view class="picker-header">
+        <text bindtap="onRegionCancel">取消</text>
+        <text bindtap="onRegionConfirm">确定</text>
+      </view>
+      <picker-view value="{{regionIndex}}" bindchange="onRegionChange" style="height:300px">
+        <picker-view-column>
+          <view wx:for="{{regionList}}" wx:key="value">{{item.label}}</view>
+        </picker-view-column>
+        <picker-view-column>
+          <view wx:for="{{regionList[regionIndex[0]].children}}" wx:key="*this">{{item}}</view>
+        </picker-view-column>
+      </picker-view>
+    </view>
+  </view>
 </view>
