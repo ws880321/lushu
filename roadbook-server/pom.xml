@@ -13,7 +13,7 @@
     <version>0.1.0</version>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>17</java.version> <!-- Local dev: JDK 17. Production Dockerfile uses eclipse-temurin:21-jre -->
     </properties>
 
     <dependencies>
