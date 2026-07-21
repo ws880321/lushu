@@ -44,9 +44,15 @@
       <el-button type="primary" @click="$router.push('/pois/new')">
         + 新增 POI
       </el-button>
+      <el-button @click="exportCsv">
+        📥 导出 CSV
+      </el-button>
     </div>
 
     <el-table :data="pois" stripe v-loading="loading" style="width: 100%">
+      <template #empty>
+        <el-empty v-if="!loading" :description="search||categoryFilter||provinceFilter?'未找到匹配的 POI':'暂无 POI 数据'" />
+      </template>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="name" label="名称" min-width="160" />
       <el-table-column prop="category" label="类别" width="80">
@@ -169,6 +175,14 @@ async function handleDelete(id) {
 }
 
 onMounted(fetchData)
+
+function exportCsv() {
+  const params = new URLSearchParams()
+  if (categoryFilter.value) params.set('category', categoryFilter.value)
+  if (provinceFilter.value) params.set('province', provinceFilter.value)
+  if (search.value) params.set('name', search.value)
+  window.open('/api/v1/admin/export/pois?' + params.toString(), '_blank')
+}
 </script>
 
 <style scoped>

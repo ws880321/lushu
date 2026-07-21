@@ -2,16 +2,16 @@
   <div class="map-picker">
     <div ref="mapContainer" class="map-container"></div>
     <div v-if="coords" class="coord-tag">
-      <el-tag closable @close="clearCoords">
+      <van-tag closable @close="clearCoords" type="primary">
         {{ coords.lng.toFixed(6) }}, {{ coords.lat.toFixed(6) }}
-      </el-tag>
+      </van-tag>
     </div>
     <p v-else class="hint">点击地图选择坐标</p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 
 const props = defineProps({
   modelValue: {
@@ -88,16 +88,18 @@ onMounted(async () => {
 <style scoped>
 .map-container {
   width: 100%;
-  height: 300px;
-  border: 1px solid var(--el-border-color);
-  border-radius: 4px;
+  height: 280px;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
 }
 .coord-tag {
   margin-top: 8px;
+  text-align: center;
 }
 .hint {
   margin-top: 8px;
   font-size: 13px;
-  color: var(--el-text-color-secondary);
+  color: #999;
+  text-align: center;
 }
 </style>

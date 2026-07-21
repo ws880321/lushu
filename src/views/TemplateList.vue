@@ -13,9 +13,15 @@
       <el-button type="primary" @click="$router.push('/templates/new')">
         + 新增模板
       </el-button>
+      <el-button @click="exportCsv">
+        📥 导出 CSV
+      </el-button>
     </div>
 
     <el-table :data="templates" stripe v-loading="loading" style="width: 100%">
+      <template #empty>
+        <el-empty v-if="!loading" :description="regionSearch?'未找到匹配的模板':'暂无模板数据'" />
+      </template>
       <el-table-column prop="id" label="ID" width="60" />
       <el-table-column prop="name" label="名称" min-width="160" />
       <el-table-column prop="region" label="区域" width="100" />
@@ -124,6 +130,12 @@ async function handleDelete(id) {
 }
 
 onMounted(fetchData)
+
+function exportCsv() {
+  const params = new URLSearchParams()
+  if (regionSearch.value) params.set('region', regionSearch.value)
+  window.open('/api/v1/admin/export/templates?' + params.toString(), '_blank')
+}
 </script>
 
 <style scoped>
