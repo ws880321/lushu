@@ -33,6 +33,9 @@ public class RouteWaypoint {
     @Column(length = 512)
     private String description;
 
+    @Column(length = 512)
+    private String photoUrl;
+
     @Column(nullable = false, precision = 10, scale = 7)
     private BigDecimal lng;
 

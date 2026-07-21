@@ -10,5 +10,7 @@ public class RecordWaypointRequest {
     private Double lat;
     private String type = "custom";
     private String note;
+    private String photoUrl;
     private Integer dayNumber = 1;
+    private Long routeId;
 }

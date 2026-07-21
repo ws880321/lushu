@@ -1,5 +1,5 @@
 {
-  "appid": "wx779bb87ab22d48fb",
+  "appid": "wxaa7a4e3aa59d8ec6",
   "projectname": "路书",
   "compileType": "miniprogram",
   "libVersion": "3.3.0",
@@ -9,7 +9,7 @@
     "minified": true,
     "compileWorklet": false,
     "uglifyFileName": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "enhance": false,
     "packNpmManually": false,
     "packNpmRelationList": [],

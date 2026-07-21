@@ -10,7 +10,8 @@ Page({
     polylines: [],
     markers: [],
     centerLng: 104,
-    centerLat: 30
+    centerLat: 30,
+    loading: true
   },
 
   onLoad(options) {
@@ -36,11 +37,12 @@ Page({
     }
 
     if (!route) {
+      this.setData({ loading: false })
       wx.showToast({ title: '加载失败', icon: 'none' })
       return
     }
 
-    this.setData({ route })
+    this.setData({ route, loading: false })
 
     if (!fromNet) {
       wx.showToast({ title: '当前离线，显示缓存', icon: 'none', duration: 2000 })

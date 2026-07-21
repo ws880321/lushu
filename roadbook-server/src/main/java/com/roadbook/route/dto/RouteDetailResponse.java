@@ -19,6 +19,7 @@ public class RouteDetailResponse {
     private Double totalDistanceKm;
     private EstimatedCost estimatedCost;
     private String weatherAlert;
+    private Integer status;
     private List<DayItinerary> itinerary;
     private List<FuelStop> fuelStops;
     private LocalDateTime createdAt;
@@ -41,6 +42,7 @@ public class RouteDetailResponse {
         private String type;
         private String name;
         private String description;
+        private String photoUrl;
         private BigDecimal lng;
         private BigDecimal lat;
         private LocalTime arrival;

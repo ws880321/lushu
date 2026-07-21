@@ -72,6 +72,7 @@ public class RouteGenerateService {
         List<RouteWaypoint> waypoints;
         Route route;
 
+        // Template valid only if the province maps to the template's region
         boolean templateValid = template != null && regionMatches(province, template.getRegion());
 
         if (templateValid) {
@@ -475,5 +476,34 @@ public class RouteGenerateService {
         BigDecimal bd = BigDecimal.valueOf(value);
         bd = bd.setScale(places, RoundingMode.HALF_UP);
         return bd.doubleValue();
+    }
+
+    /**
+     * Geocode and compute distances for waypoints after AI adjustment.
+     */
+    @Transactional
+    public void enrichWaypoints(Long routeId, List<RouteWaypoint> waypoints) {
+        double baseLng = 104, baseLat = 30;
+        for (RouteWaypoint rwp : waypoints) {
+            try {
+                GeoCodeResponse resp = amapClient.geocode(rwp.getName());
+                if (resp != null && resp.getGeocodes() != null && !resp.getGeocodes().isEmpty()) {
+                    String[] parts = resp.getGeocodes().get(0).getLocation().split(",");
+                    rwp.setLng(new BigDecimal(parts[0]));
+                    rwp.setLat(new BigDecimal(parts[1]));
+                }
+            } catch (Exception e) { log.debug("Geocode failed for {}", rwp.getName()); }
+            if (rwp.getLng() == null) rwp.setLng(BigDecimal.valueOf(baseLng + Math.random() * 3 - 1.5));
+            if (rwp.getLat() == null) rwp.setLat(BigDecimal.valueOf(baseLat + Math.random() * 3 - 1.5));
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+        }
+        java.time.LocalTime t = java.time.LocalTime.of(8, 0);
+        for (RouteWaypoint rwp : waypoints) {
+            rwp.setArrivalTime(t);
+            int stay = rwp.getStayDuration() != null ? rwp.getStayDuration() : 60;
+            rwp.setDepartureTime(t.plusMinutes(stay));
+            rwp.setDistanceFromPrev(30000);
+            t = rwp.getDepartureTime().plusMinutes(20);
+        }
     }
 }

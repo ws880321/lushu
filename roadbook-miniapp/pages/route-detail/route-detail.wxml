@@ -1,5 +1,28 @@
 <view class="container">
-  <!-- Map area -->
+  <!-- Skeleton loading -->
+  <view wx:if="{{loading}}" class="skeleton">
+    <view class="sk-map"></view>
+    <view class="sk-overlay">
+      <view class="sk-line sk-w60"></view>
+      <view class="sk-line sk-w40 sk-short"></view>
+    </view>
+    <view class="sk-tabs">
+      <view class="sk-pill" wx:for="{{4}}" wx:key="*this"></view>
+    </view>
+    <view class="sk-timeline">
+      <view class="sk-wp" wx:for="{{3}}" wx:key="*this">
+        <view class="sk-dot-col"><view class="sk-dot"></view><view class="sk-vline"></view></view>
+        <view class="sk-card">
+          <view class="sk-line sk-w70"></view>
+          <view class="sk-line sk-w30 sk-short"></view>
+          <view class="sk-line sk-w50 sk-short"></view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- Real content -->
+  <block wx:else>
   <view class="map-area">
     <map id="routeMap"
       longitude="{{centerLng}}"
@@ -26,7 +49,6 @@
     </scroll-view>
   </view>
 
-  <!-- Timeline -->
   <scroll-view scroll-y class="timeline" wx:if="{{currentDay}}">
     <view class="day-header">
       <text>Day {{currentDay.day}} · {{currentDay.distanceKm}}km · {{currentDay.driveTimeMin}}分钟</text>
@@ -55,4 +77,5 @@
       </view>
     </view>
   </scroll-view>
+  </block>
 </view>

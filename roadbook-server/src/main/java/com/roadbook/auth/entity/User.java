@@ -26,6 +26,9 @@ public class User {
     @Column(length = 20)
     private String phone;
 
+    @Column(nullable = false, length = 16)
+    private String role = "user";
+
     @Column(nullable = false)
     private Integer membership = 0;
 

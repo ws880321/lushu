@@ -84,6 +84,44 @@ public class AiRouteGenerator {
         }
     }
 
+    /**
+     * Adjust an existing route based on a user's conversational request.
+     */
+    public AiRoute adjust(String routeJson, String userMessage) {
+        String prompt = String.format("""
+            你是中国自驾游专家。以下是一条已有的路线规划（JSON格式）：
+
+            %s
+
+            用户要求：%s
+
+            请根据用户要求修改路线，返回修改后的完整JSON。
+            要求：保持合理的总天数、距离和途经点数量。地点必须真实可查。
+            只返回JSON，不要加```标记或解释文字。
+            """, routeJson, userMessage);
+
+        try {
+            Map<String, Object> body = Map.of(
+                "model", "deepseek-chat",
+                "messages", List.of(
+                    Map.of("role", "system", "content", "你是中国自驾游专家。只返回纯净JSON，不要任何解释。"),
+                    Map.of("role", "user", "content", prompt)),
+                "temperature", 0.7, "max_tokens", 4096);
+
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest req = HttpRequest.newBuilder().uri(URI.create(apiUrl))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body))).build();
+
+            HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+            return parse(resp.body());
+        } catch (Exception e) {
+            log.error("AI adjustment failed", e);
+            return null;
+        }
+    }
+
     @Data @JsonIgnoreProperties(ignoreUnknown = true)
     static class DeepSeekResp { private List<Choice> choices;
         @Data @JsonIgnoreProperties(ignoreUnknown = true)

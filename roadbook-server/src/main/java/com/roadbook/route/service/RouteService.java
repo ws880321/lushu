@@ -6,6 +6,7 @@ import com.roadbook.route.repository.RouteRepository;
 import com.roadbook.route.repository.RouteWaypointRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,15 +25,23 @@ public class RouteService {
     }
 
     /**
-     * List routes for a user, ordered by creation time descending.
-     *
-     * @param userId the user ID
-     * @param page   page number (0-based)
-     * @param size   page size
-     * @return paginated routes
+     * List routes for a user with optional sorting and keyword search.
      */
-    public Page<Route> listByUser(Long userId, int page, int size) {
-        return routeRepo.findByUserIdOrderByCreatedAtDesc(userId, PageRequest.of(page, size));
+    public Page<Route> listByUser(Long userId, int page, int size, String sortBy, String sortDir, String keyword) {
+        Sort sort = buildSort(sortBy, sortDir);
+        PageRequest pr = PageRequest.of(page, size, sort);
+        if (keyword != null && !keyword.isBlank()) {
+            return routeRepo.findByUserIdAndTitleContaining(userId, keyword.trim(), pr);
+        }
+        return routeRepo.findByUserId(userId, pr);
+    }
+
+    private Sort buildSort(String sortBy, String sortDir) {
+        String field = "createdAt";
+        if ("totalDays".equals(sortBy)) field = "totalDays";
+        else if ("totalDistance".equals(sortBy)) field = "totalDistance";
+        Sort.Direction dir = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return Sort.by(dir, field);
     }
 
     /**
@@ -53,5 +62,8 @@ public class RouteService {
      */
     public List<RouteWaypoint> getWaypoints(Long routeId) {
         return waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(routeId);
+    }
+    public Page<Route> listPublic(int page, int size) {
+        return routeRepo.findByIsPublicAndStatusOrderByCreatedAtDesc(1, 1, PageRequest.of(page, size));
     }
 }

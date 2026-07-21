@@ -13,8 +13,10 @@ import com.roadbook.route.repository.RouteRepository;
 import com.roadbook.route.repository.RouteWaypointRepository;
 import com.roadbook.route.service.RouteGenerateService;
 import com.roadbook.route.service.RouteService;
+import com.roadbook.ai.AiRouteGenerator;
 import com.roadbook.template.entity.RouteTemplate;
 import com.roadbook.template.service.TemplateService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -35,15 +37,22 @@ public class RouteController {
     private final TemplateService templateService;
     private final RouteWaypointRepository waypointRepo;
     private final RouteRepository routeRepo;
+    private final com.roadbook.poi.repository.PoiRepository poiRepo;
+    private final AiRouteGenerator aiGenerator;
+    private final ObjectMapper objectMapper;
 
     public RouteController(RouteGenerateService routeGenerateService, RouteService routeService,
                            TemplateService templateService, RouteWaypointRepository waypointRepo,
-                           RouteRepository routeRepo) {
+                           RouteRepository routeRepo, com.roadbook.poi.repository.PoiRepository poiRepo,
+                           AiRouteGenerator aiGenerator, ObjectMapper objectMapper) {
         this.routeGenerateService = routeGenerateService;
         this.routeService = routeService;
         this.templateService = templateService;
         this.waypointRepo = waypointRepo;
         this.routeRepo = routeRepo;
+        this.poiRepo = poiRepo;
+        this.aiGenerator = aiGenerator;
+        this.objectMapper = objectMapper;
     }
 
     /**
@@ -55,6 +64,18 @@ public class RouteController {
             @RequestBody RecordWaypointRequest req) {
         // Find or create active recording route
         Route route = routeRepo.findFirstByUserIdAndStatusOrderByCreatedAtDesc(userId, 2).orElse(null);
+        if (route == null) {
+            // Re-recording on a specific existing route (status=1 or status=2)
+            Route existing = routeRepo.findById(req.getRouteId() != null ? req.getRouteId() : -1L).orElse(null);
+            if (existing != null) {
+                route = existing;
+                // Set back to recording if it was finished
+                if (route.getStatus() != 2) {
+                    route.setStatus(2);
+                    routeRepo.save(route);
+                }
+            }
+        }
         if (route == null) {
             route = new Route();
             route.setUserId(userId);
@@ -74,10 +95,11 @@ public class RouteController {
         RouteWaypoint wp = new RouteWaypoint();
         wp.setRouteId(route.getId());
         wp.setName(req.getName());
-        wp.setLng(req.getLng() != null ? BigDecimal.valueOf(req.getLng()) : null);
-        wp.setLat(req.getLat() != null ? BigDecimal.valueOf(req.getLat()) : null);
+        wp.setLng(req.getLng() != null ? BigDecimal.valueOf(req.getLng()) : BigDecimal.ZERO);
+        wp.setLat(req.getLat() != null ? BigDecimal.valueOf(req.getLat()) : BigDecimal.ZERO);
         wp.setPointType(req.getType() != null ? req.getType() : "custom");
         wp.setDescription(req.getNote());
+        wp.setPhotoUrl(req.getPhotoUrl());
         wp.setDayNumber(req.getDayNumber() != null ? req.getDayNumber() : 1);
         wp.setSortOrder(waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(route.getId()).size() + 1);
         wp = waypointRepo.save(wp);
@@ -157,9 +179,106 @@ public class RouteController {
     public ApiResponse<Page<Route>> list(
             @RequestAttribute("userId") Long userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        Page<Route> routes = routeService.listByUser(userId, page, size);
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String keyword) {
+        Page<Route> routes = routeService.listByUser(userId, page, size, sortBy, sortDir, keyword);
         return ApiResponse.success(routes);
+    }
+
+    /**
+     * Update route title/description. Owner only.
+     */
+    @PutMapping("/{id}")
+    public ApiResponse<Route> update(@RequestAttribute("userId") Long userId, @PathVariable Long id, @RequestBody Map<String, String> body) {
+        Route route = routeRepo.findById(id).orElseThrow(() -> new RuntimeException("路线不存在"));
+        if (!route.getUserId().equals(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+        if (body.containsKey("title")) route.setTitle(body.get("title"));
+        if (body.containsKey("description")) route.setDescription(body.get("description"));
+        return ApiResponse.success(routeRepo.save(route));
+    }
+
+    /**
+     * Delete a route. Owner only.
+     */
+    @DeleteMapping("/{id}")
+    public ApiResponse<Void> delete(@RequestAttribute("userId") Long userId, @PathVariable Long id) {
+        Route route = routeRepo.findById(id).orElseThrow(() -> new RuntimeException("路线不存在"));
+        if (!route.getUserId().equals(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+        List<RouteWaypoint> wps = waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(id);
+        waypointRepo.deleteAll(wps);
+        routeRepo.delete(route);
+        return ApiResponse.success(null);
+    }
+
+    /** Publish a route to community. Owner only. */
+    @PostMapping("/{id}/publish")
+    public ApiResponse<Void> publish(@RequestAttribute("userId") Long userId, @PathVariable Long id) {
+        Route route = routeRepo.findById(id).orElseThrow();
+        if (!route.getUserId().equals(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+        route.setIsPublic(1); routeRepo.save(route);
+        return ApiResponse.success(null);
+    }
+
+    /** Browse community public routes */
+    @GetMapping("/community")
+    public ApiResponse<List<Route>> community(@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.success(routeService.listPublic(page, size).getContent());
+    }
+
+    /**
+     * AI conversational route adjustment.
+     * Takes an existing route ID and a user message, regenerates with AI.
+     */
+    @PostMapping("/{id}/adjust")
+    public ApiResponse<?> adjustRoute(@RequestAttribute("userId") Long userId,
+                                      @PathVariable Long id,
+                                      @RequestBody RouteAdjustRequest req) {
+        Route route = routeRepo.findById(id).orElse(null);
+        if (route == null) return ApiResponse.error(ErrorCode.NOT_FOUND);
+        if (!route.getUserId().equals(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+
+        List<RouteWaypoint> wps = waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(id);
+        // Serialize current route as JSON for AI context
+        try {
+            String routeJson = objectMapper.writeValueAsString(buildDetailResponse(route, wps));
+            AiRouteGenerator.AiRoute adjusted = aiGenerator.adjust(routeJson, req.getMessage());
+            if (adjusted == null) return ApiResponse.error(ErrorCode.INTERNAL_ERROR);
+
+            // Delete old waypoints and save new ones
+            waypointRepo.deleteAll(wps);
+            route.setTitle(adjusted.title());
+            route.setDescription(adjusted.description());
+            route.setTotalDays(adjusted.totalDays());
+            route.setTotalDistance(adjusted.totalDistanceKm());
+            routeRepo.save(route);
+
+            List<RouteWaypoint> newWps = new java.util.ArrayList<>();
+            for (int i = 0; i < adjusted.waypoints().size(); i++) {
+                AiRouteGenerator.AiWaypoint awp = adjusted.waypoints().get(i);
+                RouteWaypoint wp = new RouteWaypoint();
+                wp.setRouteId(id);
+                wp.setSortOrder(i + 1);
+                wp.setDayNumber(awp.day());
+                wp.setPointType(awp.type() != null ? awp.type() : "scenic");
+                wp.setName(awp.name());
+                wp.setDescription(awp.tips());
+                wp.setStayDuration(awp.stayMin());
+                wp.setLng(java.math.BigDecimal.ZERO);
+                wp.setLat(java.math.BigDecimal.ZERO);
+                newWps.add(wp);
+            }
+            waypointRepo.saveAll(newWps);
+
+            // Geocode + fetch distances for new waypoints (async-like best effort)
+            routeGenerateService.enrichWaypoints(id, newWps);
+
+            return ApiResponse.success(buildDetailResponse(route, waypointRepo.findByRouteIdOrderByDayNumberAscSortOrderAsc(id)));
+        } catch (Exception e) {
+            log.error("Route adjustment failed for route {}: {}", id, e.getMessage(), e);
+            return ApiResponse.error(ErrorCode.INTERNAL_ERROR);
+        }
     }
 
     // ========== Private helpers ==========
@@ -171,6 +290,17 @@ public class RouteController {
         if (waypoints == null) {
             waypoints = Collections.emptyList();
         }
+
+        // Batch-fetch POI scores for waypoints that reference a POI
+        List<Long> poiIds = waypoints.stream()
+                .map(RouteWaypoint::getPoiId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, com.roadbook.poi.entity.Poi> poiMap = poiIds.isEmpty()
+                ? Collections.emptyMap()
+                : poiRepo.findAllById(poiIds).stream()
+                    .collect(Collectors.toMap(com.roadbook.poi.entity.Poi::getId, p -> p));
 
         // Group waypoints by day
         Map<Integer, List<RouteWaypoint>> dayGroups = waypoints.stream()
@@ -198,11 +328,15 @@ public class RouteController {
 
                 boolean isBreak = rwp.getIsBreakPoint() != null && rwp.getIsBreakPoint() == 1;
 
+                // Look up POI scores
+                com.roadbook.poi.entity.Poi poi = rwp.getPoiId() != null ? poiMap.get(rwp.getPoiId()) : null;
+
                 WaypointDetail detail = WaypointDetail.builder()
                         .sort(rwp.getSortOrder())
                         .type(rwp.getPointType())
                         .name(rwp.getName())
                         .description(rwp.getDescription())
+                        .photoUrl(rwp.getPhotoUrl())
                         .lng(rwp.getLng())
                         .lat(rwp.getLat())
                         .arrival(rwp.getArrivalTime())
@@ -210,6 +344,9 @@ public class RouteController {
                         .stayMin(rwp.getStayDuration())
                         .distanceFromPrevKm(distKm > 0 ? Math.round(distKm * 10.0) / 10.0 : 0.0)
                         .isBreak(isBreak)
+                        .driveScore(poi != null && poi.getDriveScore() != null ? poi.getDriveScore().intValue() : null)
+                        .parkingScore(poi != null && poi.getParkingScore() != null ? poi.getParkingScore().intValue() : null)
+                        .roadScore(poi != null && poi.getRoadScore() != null ? poi.getRoadScore().intValue() : null)
                         .build();
                 details.add(detail);
 
@@ -249,6 +386,7 @@ public class RouteController {
                 .totalDays(route.getTotalDays())
                 .totalDistanceKm(Math.round(totalDistanceKm * 10.0) / 10.0)
                 .estimatedCost(cost)
+                .status(route.getStatus())
                 .itinerary(itinerary)
                 .fuelStops(fuelStops)
                 .createdAt(route.getCreatedAt())

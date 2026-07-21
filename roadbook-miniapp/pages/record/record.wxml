@@ -17,6 +17,11 @@
       </view>
     </view>
     <input class="input" placeholder="备注（如：停车费10元，路况好）" value="{{note}}" bindinput="e=>note=e.detail.value" />
+    <view class="photo-section" wx:if="{{photos.length}}">
+      <image class="photo-preview" src="{{photos[0]}}" mode="aspectFill" bindtap="e=>wx.previewImage({urls:photos,current:photos[0]})" />
+      <view class="photo-remove" bindtap="removePhoto">✕</view>
+    </view>
+    <button class="photo-btn" bindtap="choosePhoto">📷 拍照/相册</button>
     <button class="loc-btn" bindtap="getLoc">
       {{lng ? '已定位: ' + lng.toFixed(4) + ',' + lat.toFixed(4) : '📍 获取当前位置'}}
     </button>
@@ -26,6 +31,7 @@
   <view class="card" wx:if="{{records.length}}">
     <view class="card-title">📋 已记录 {{records.length}} 个点</view>
     <view class="rec-item" wx:for="{{records}}" wx:key="idx">
+      <image class="rec-thumb" wx:if="{{item.photo}}" src="{{item.photo}}" mode="aspectFill" />
       <text class="rec-type">{{types[typesMap[item.type]||0]}}</text>
       <text class="rec-name">{{item.name}}</text>
       <text class="rec-day">D{{item.dayNumber}}</text>

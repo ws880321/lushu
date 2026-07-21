@@ -69,6 +69,10 @@ public class WechatAuthService {
     }
 
     private String resolveOpenid(String code) {
+        // Admin PC login uses fabricated codes with "admin_" prefix — skip WeChat API
+        if (code != null && code.startsWith("admin_")) {
+            return "admin_" + java.util.UUID.randomUUID().toString().replace("-", "");
+        }
         if (wechatSecret == null || wechatSecret.length() < 20) {
             return "mock_" + java.util.UUID.randomUUID().toString().replace("-", "");
         }

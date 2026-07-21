@@ -8,23 +8,47 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./src/main/resources/db/migration:/docker-entrypoint-initdb.d
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --innodb-buffer-pool-size=64M --max-connections=20 --performance-schema=OFF
+    mem_limit: 350m
     restart: always
+
   redis:
     image: redis:7-alpine
+    command: redis-server --maxmemory 32mb --maxmemory-policy allkeys-lru --save ""
+    mem_limit: 60m
     restart: always
+
   app:
     build: .
-    ports: ["8080:8080"]
     environment:
       SPRING_PROFILES_ACTIVE: prod
       JWT_SECRET: ${JWT_SECRET}
       AMAP_KEY: ${AMAP_KEY}
+      WECHAT_APPID: ${WECHAT_APPID}
+      WECHAT_SECRET: ${WECHAT_SECRET}
+      DEEPSEEK_KEY: ${DEEPSEEK_KEY}
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/roadbook?useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8mb4
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SPRING_DATA_REDIS_HOST: redis
-    depends_on: [mysql, redis]
+      JAVA_TOOL_OPTIONS: -Xmx256m -Xms128m
+    volumes:
+      - uploads_data:/opt/roadbook/uploads
+    depends_on:
+      - mysql
+      - redis
+    mem_limit: 500m
     restart: always
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    mem_limit: 30m
+    restart: always
+
 volumes:
   mysql_data:
+  uploads_data:

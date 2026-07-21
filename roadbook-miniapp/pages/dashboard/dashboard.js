@@ -6,17 +6,36 @@ Page({
     currentLat: null,
     nextDistance: '--',
     nextArrival: '--',
-    fuelLeft: 420,
+    fuelLeft: 0,
     fuelMax: 600,
-    fuelPercent: 70,
-    toEndKm: 380,
-    stopsNeeded: 1,
+    fuelPercent: 0,
+    toEndKm: 0,
+    stopsNeeded: 0,
     positionMarker: [],
     nearbyAlerts: []
   },
 
   onShow() {
     this.getLocation()
+    this.calcFuel()
+  },
+
+  async calcFuel() {
+    let rangeFull = 420
+    let routeDistance = 0
+    try {
+      const vehicles = await get('/vehicles')
+      if (vehicles && vehicles.length && vehicles[0].rangeFull) rangeFull = vehicles[0].rangeFull
+    } catch {}
+    try {
+      const data = await get('/routes', { size: 1 })
+      const routes = data.content || data || []
+      if (routes.length && routes[0].totalDistance) routeDistance = parseFloat(routes[0].totalDistance) || 0
+    } catch {}
+    const fuelLeft = Math.max(0, rangeFull - routeDistance)
+    const fuelPercent = rangeFull > 0 ? Math.round((fuelLeft / rangeFull) * 100) : 100
+    const stopsNeeded = rangeFull > 0 && routeDistance > rangeFull ? Math.floor(routeDistance / rangeFull) : 0
+    this.setData({ fuelLeft, fuelMax: rangeFull, fuelPercent, toEndKm: routeDistance, stopsNeeded })
   },
 
   getLocation() {
