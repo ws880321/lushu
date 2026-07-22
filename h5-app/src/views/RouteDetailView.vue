@@ -81,6 +81,7 @@
         <div class="dlg-arrival" v-if="selectedWp.arrival">到达: {{selectedWp.arrival}} <span v-if="selectedWp.departure">→ 离开: {{selectedWp.departure}}</span></div>
       </div>
       <template #footer>
+        <van-button size="small" plain @click="showDialog=false">取消</van-button>
         <van-button size="small" @click="navigateTo(selectedWp)" type="primary">🧭 导航前往</van-button>
       </template>
     </van-dialog>
