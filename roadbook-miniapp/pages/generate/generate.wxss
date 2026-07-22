@@ -274,3 +274,83 @@
 .generate-btn[disabled] {
   opacity: 0.6;
 }
+
+/* Route Selection Results */
+.results-container {
+  padding: 24rpx 0 120rpx;
+}
+.results-hd {
+  text-align: center;
+  padding: 32rpx 0 16rpx;
+}
+.rh-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #333;
+  display: block;
+}
+.rh-sub {
+  font-size: 26rpx;
+  color: #999;
+  display: block;
+  margin-top: 8rpx;
+}
+.route-card {
+  position: relative;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin: 0 24rpx 20rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+.route-card.primary {
+  border: 3rpx solid #4CAF50;
+  background: linear-gradient(135deg, #f1f8e9, #fff);
+}
+.rc-badge {
+  display: inline-block;
+  padding: 6rpx 20rpx;
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  background: #4CAF50;
+  color: #fff;
+  margin-bottom: 12rpx;
+}
+.rc-badge.tpl {
+  background: #E8F5E9;
+  color: #2E7D32;
+}
+.rc-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 8rpx;
+}
+.rc-stats {
+  display: flex;
+  gap: 24rpx;
+  font-size: 26rpx;
+  color: #666;
+  margin-bottom: 6rpx;
+}
+.rc-desc {
+  font-size: 24rpx;
+  color: #999;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.5;
+}
+.regen-btn {
+  margin: 24rpx 48rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  font-size: 30rpx;
+  color: #2E7D32;
+  background: #fff;
+  border: 2rpx solid #2E7D32;
+  border-radius: 40rpx;
+}

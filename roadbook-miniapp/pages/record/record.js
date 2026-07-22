@@ -37,7 +37,7 @@ Page({
         const app = getApp()
         const uploadRes = await new Promise((resolve, reject) => {
           wx.uploadFile({
-            url: (app.globalData.baseUrl || '') + '/api/v1/upload',
+            url: (app.globalData.baseUrl || '') + '/upload',
             filePath: this.data.photos[0],
             name: 'file',
             header: app.globalData.token ? { 'Authorization': 'Bearer ' + app.globalData.token } : {},

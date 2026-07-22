@@ -243,21 +243,18 @@ async function savePoint() {
     try {
       const form = new FormData()
       form.append('file', photoFile.value)
-      const resp = await fetch('/api/v1/upload', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + (localStorage.getItem('app_token') || '') },
-        body: form,
+      const resp = await api.post('/upload', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       })
-      const json = await resp.json()
-      if (json.code === 0 && json.data?.url) {
-        photoUrl = json.data.url
+      if (resp.data.code === 0 && resp.data.data?.url) {
+        photoUrl = resp.data.data.url
       } else {
-        throw new Error(json.message || 'upload failed')
+        throw new Error(resp.data.message || '上传失败')
       }
     } catch (e) {
       console.error(e)
       saving.value = false
-      showToast('照片上传失败')
+      showToast('照片上传失败: ' + (e.response?.data?.message || e.message || ''))
       return
     }
   }

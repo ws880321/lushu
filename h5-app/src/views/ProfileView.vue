@@ -8,7 +8,7 @@
       <van-cell title="累计里程" :value="stats.distance+' km'" />
     </van-cell-group>
     <div class="pf-actions"><van-button round block type="danger" @click="handleLogout">退出登录</van-button></div>
-    <van-dialog v-model:show="showPlans" title="升级会员"><div class="plans"><div v-for="p in plans" :key="p.id" class="plan" :class="{sel:member===p.id}" @click="doUpgrade(p)"><div class="plan-top"><span class="plan-name">{{p.name}}</span><span class="plan-price">{{p.price===0?'免费':'¥'+p.price}}</span></div><div class="plan-features" v-for="f in (p.features||'').split('|')" :key="f">{{f}}</div></div></div></van-dialog>
+    <van-dialog v-model:show="showPlans" title="升级会员" show-cancel-button><div class="plans"><div v-for="p in plans" :key="p.id" class="plan" :class="{sel:member===p.id}" @click="doUpgrade(p)"><div class="plan-top"><span class="plan-name">{{p.name}}</span><span class="plan-price">{{p.price===0?'免费':'¥'+p.price}}</span></div><div class="plan-features" v-for="f in (p.features||'').split('|')" :key="f">{{f}}</div></div></div></van-dialog>
 
     <van-dialog v-model:show="showVeh" title="车辆信息" @confirm="saveVehicle" show-cancel-button>
       <van-field v-model="vname" label="车名" placeholder="如: 我的SUV" />

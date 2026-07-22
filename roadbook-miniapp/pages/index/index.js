@@ -17,7 +17,7 @@ Page({
 
   async loadHotRoutes() {
     try {
-      const data = await get('/templates/popular?limit=6')
+      const data = await get('/templates/popular?limit=20')
       console.log('热门模板返回:', JSON.stringify(data))
       this.setData({ hotRoutes: data || [] })
     } catch (e) {

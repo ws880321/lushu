@@ -103,6 +103,7 @@ public class WechatAuthService {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("openid", user.getOpenid())
+                .claim("role", user.getRole() != null ? user.getRole() : "user")
                 .issuedAt(now).expiration(expiration)
                 .signWith(signingKey).compact();
     }
@@ -111,5 +112,14 @@ public class WechatAuthService {
         String subject = Jwts.parser().verifyWith(signingKey).build()
                 .parseSignedClaims(token).getPayload().getSubject();
         return Long.parseLong(subject);
+    }
+
+    public String parseRole(String token) {
+        try {
+            return Jwts.parser().verifyWith(signingKey).build()
+                    .parseSignedClaims(token).getPayload().get("role", String.class);
+        } catch (Exception e) {
+            return "user";
+        }
     }
 }

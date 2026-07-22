@@ -4,14 +4,14 @@ import com.roadbook.auth.dto.LoginRequest;
 import com.roadbook.auth.dto.LoginResponse;
 import com.roadbook.auth.dto.PhoneLoginRequest;
 import com.roadbook.auth.dto.SendCodeRequest;
+import com.roadbook.auth.entity.User;
+import com.roadbook.auth.repository.UserRepository;
 import com.roadbook.auth.service.PhoneAuthService;
 import com.roadbook.auth.service.WechatAuthService;
 import com.roadbook.common.ApiResponse;
+import com.roadbook.common.ErrorCode;
 import jakarta.validation.Valid;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
@@ -21,10 +21,26 @@ public class AuthController {
 
     private final WechatAuthService wechatAuthService;
     private final PhoneAuthService phoneAuthService;
+    private final UserRepository userRepo;
 
-    public AuthController(WechatAuthService wechatAuthService, PhoneAuthService phoneAuthService) {
+    public AuthController(WechatAuthService wechatAuthService, PhoneAuthService phoneAuthService,
+                         UserRepository userRepo) {
         this.wechatAuthService = wechatAuthService;
         this.phoneAuthService = phoneAuthService;
+        this.userRepo = userRepo;
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<?> me(@RequestAttribute("userId") Long userId) {
+        User user = userRepo.findById(userId).orElse(null);
+        if (user == null) return ApiResponse.error(ErrorCode.NOT_FOUND, "用户不存在");
+        return ApiResponse.success(Map.of(
+            "id", user.getId(),
+            "nickname", user.getNickname(),
+            "role", user.getRole() != null ? user.getRole() : "user",
+            "membership", user.getMembership(),
+            "createdAt", user.getCreatedAt()
+        ));
     }
 
     @PostMapping("/wechat-login")

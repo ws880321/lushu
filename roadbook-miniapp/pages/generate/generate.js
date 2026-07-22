@@ -61,13 +61,17 @@ Page({
     dailyHours: 4,
     generating: false,
     popularTemplates: [],
-    allTags: ['📷摄影', '⛺露营', '👶亲子', '🍜美食', '🏔️越野']
+    allTags: ['📷摄影', '⛺露营', '👶亲子', '🍜美食', '🏔️越野'],
+    // Results
+    showResults: false,
+    generatedRoutes: [],
+    aiGenerated: false
   },
 
   onLoad() { this.loadPopular() },
 
   async loadPopular() {
-    try { this.setData({ popularTemplates: await get('/templates/popular?limit=6') }) } catch (_) {}
+    try { this.setData({ popularTemplates: await get('/templates/popular?limit=20') }) } catch (_) {}
   },
 
   // ======== Text input ========
@@ -166,12 +170,27 @@ Page({
         startPoint, endPoint,
         preferences: { difficulty: this.data.difficulty, tags: this.data.tags, dailyDriveHours: this.data.dailyHours }
       })
-      cacheRoute(result.routeId, result)
-      wx.navigateTo({ url: '/pages/route-detail/route-detail?id=' + result.routeId })
+      const all = []
+      if (result.primary) all.push(result.primary)
+      if (result.alternatives) all.push(...result.alternatives)
+      all.forEach(r => cacheRoute(r.routeId, r))
+      this.setData({
+        generatedRoutes: all,
+        aiGenerated: result.aiGenerated || false,
+        showResults: true,
+        generating: false
+      })
     } catch (e) {
       wx.showToast({ title: '生成失败: ' + (e.message || '网络错误'), icon: 'none' })
-    } finally {
       this.setData({ generating: false })
     }
+  },
+  selectRoute(e) {
+    const r = e.currentTarget.dataset.route
+    cacheRoute(r.routeId, r)
+    wx.navigateTo({ url: '/pages/route-detail/route-detail?id=' + r.routeId })
+  },
+  backToForm() {
+    this.setData({ showResults: false, generatedRoutes: [] })
   }
 })

@@ -125,25 +125,15 @@ public class RouteController {
      * @return detailed route response
      */
     @PostMapping("/generate")
-    public ApiResponse<?> generate(
+    public ApiResponse<RouteGenerateResponse> generate(
             @RequestAttribute("userId") Long userId,
             @Valid @RequestBody RouteGenerateRequest req) {
         try {
-            RouteDetailResponse response = routeGenerateService.generate(userId, req);
+            RouteGenerateResponse response = routeGenerateService.generate(userId, req);
             return ApiResponse.success(response);
         } catch (RuntimeException e) {
             if ("TEMPLATE_NOT_FOUND".equals(e.getMessage())) {
-                ApiResponse<Map<String, Object>> resp = ApiResponse.error(ErrorCode.TEMPLATE_NOT_FOUND, "未找到匹配模板");
-                String region = "四川";
-                List<RouteTemplate> alts = templateService.getAlternatives(region, req.getTotalDays());
-                Map<String, Object> data = new LinkedHashMap<>();
-                data.put("suggestion", "为您推荐以下路线方案");
-                data.put("alternatives", alts.stream().map(t -> Map.of(
-                    "id", t.getId(), "name", t.getName(), "region", t.getRegion(),
-                    "totalDays", t.getTotalDays(), "difficulty", t.getDifficulty()
-                )).toList());
-                resp.setData(data);
-                return resp;
+                return ApiResponse.error(ErrorCode.TEMPLATE_NOT_FOUND, "暂无可匹配路线，请调整条件后重试");
             }
             log.error("Route generation failed for user {}: {}", userId, e.getMessage(), e);
             return ApiResponse.error(ErrorCode.INTERNAL_ERROR);

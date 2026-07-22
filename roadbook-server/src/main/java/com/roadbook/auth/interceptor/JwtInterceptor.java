@@ -42,7 +42,9 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         try {
             Long userId = wechatAuthService.parseUserId(token);
+            String role = wechatAuthService.parseRole(token);
             request.setAttribute("userId", userId);
+            request.setAttribute("role", role);
             return true;
         } catch (Exception e) {
             writeUnauthorized(response, "Invalid or expired token");

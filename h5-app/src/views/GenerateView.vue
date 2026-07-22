@@ -2,7 +2,8 @@
   <div class="gen">
     <div class="hd"><h3>生成自驾路书</h3></div>
 
-    <!-- Card 1: Start/End + Days -->
+    <!-- Form (hidden when results shown) -->
+    <template v-if="!showResults">
     <div class="card">
       <div class="card-title">起终点 & 天数</div>
       <van-field v-model="startText" placeholder="起点（城市或地址）" label="起点">
@@ -20,7 +21,6 @@
       <div class="stepper-row"><span>天数</span><van-stepper v-model="totalDays" :min="1" :max="15" /></div>
     </div>
 
-    <!-- Card 2: Preferences -->
     <div class="card">
       <div class="card-title">偏好设置</div>
       <div class="row-label">难度</div>
@@ -35,7 +35,6 @@
       <van-slider v-model="dailyHours" :min="2" :max="8" :step="0.5" active-color="#2E7D32" />
     </div>
 
-    <!-- Card 3: Hot Templates -->
     <div class="card">
       <div class="card-title">热门路线模板</div>
       <div class="hot-scroll">
@@ -49,6 +48,31 @@
     <van-button round block type="primary" :loading="generating" @click="onGenerate" class="gen-btn">
       {{ generating ? 'AI 正在规划路线...' : '生成路线' }}
     </van-button>
+    </template>
+
+    <!-- Results: route selection -->
+    <div v-if="showResults" class="results">
+      <div class="results-hd">
+        <h3>🎉 为您规划了 {{allRoutes.length}} 条路线</h3>
+        <p class="results-sub">点击选择一条查看详情</p>
+      </div>
+
+      <div v-for="(r, i) in allRoutes" :key="r.routeId"
+           class="route-card" :class="{primary: i===0 && aiGenerated}"
+           @click="selectRoute(r)">
+        <div class="rc-badge" v-if="i===0 && aiGenerated">🤖 AI 推荐</div>
+        <div class="rc-badge tpl" v-else-if="i===0">⭐ 最佳匹配</div>
+        <div class="rc-title">{{r.title}}</div>
+        <div class="rc-stats">
+          <span>{{r.totalDays}}天</span>
+          <span>{{r.totalDistanceKm || '?'}}km</span>
+          <span v-if="r.estimatedCost">¥{{Math.round(r.estimatedCost.totalYuan)}}</span>
+        </div>
+        <div class="rc-desc" v-if="r.description">{{r.description}}</div>
+      </div>
+
+      <van-button round block plain @click="showResults=false" class="regen-btn">重新生成</van-button>
+    </div>
 
     <!-- City Picker (native overlay, no Vant popup deps) -->
     <div v-if="showPicker" class="picker-overlay" @click.self="showPicker=false">
@@ -104,12 +128,14 @@ function dLabel(v){ return v===1?'轻松':v===2?'中等':v===3?'挑战':'' }
 
 const hotTemplates=ref([]), showPicker=ref(false), pickTarget=ref('start'), provIdx=ref(0), cityIdx=ref(0)
 const showMapPicker=ref(false), mapPickTarget=ref('start'), mapPickerCoords=ref(null)
+const showResults=ref(false), generatedRoutes=ref([]), aiGenerated=ref(false)
+const allRoutes=computed(()=>generatedRoutes.value)
 const provinces=['四川','云南','甘肃','青海','陕西','贵州','浙江','安徽','宁夏','西藏','新疆','黑龙江','海南','福建']
 const allCities={四川:['成都','绵阳','乐山','康定','雅安','泸州'],云南:['昆明','大理','丽江','香格里拉'],甘肃:['兰州','甘南','嘉峪关'],青海:['西宁','海东'],陕西:['西安','宝鸡'],贵州:['贵阳','遵义','安顺'],浙江:['杭州','温州'],安徽:['合肥','黄山'],宁夏:['银川'],西藏:['拉萨'],新疆:['乌鲁木齐'],黑龙江:['哈尔滨'],海南:['海口','三亚'],福建:['福州','厦门']}
 const coords={成都:[104.07,30.66],绵阳:[104.68,31.47],乐山:[103.77,29.55],康定:[101.96,30.05],雅安:[103.02,29.98],泸州:[105.44,28.87],昆明:[102.71,25.04],大理:[100.23,25.59],丽江:[100.23,26.87],香格里拉:[99.71,27.83],兰州:[103.83,36.06],甘南:[102.92,34.99],嘉峪关:[98.29,39.77],西宁:[101.78,36.62],海东:[102.10,36.50],西安:[108.94,34.26],宝鸡:[107.24,34.36],贵阳:[106.63,26.65],遵义:[106.93,27.73],安顺:[105.95,26.25],杭州:[120.16,30.27],温州:[120.70,27.99],合肥:[117.23,31.82],黄山:[118.17,30.27],银川:[106.23,38.49],拉萨:[91.11,29.66],乌鲁木齐:[87.62,43.79],哈尔滨:[126.64,45.76],海口:[110.20,20.04],三亚:[109.51,18.25],福州:[119.31,26.08],厦门:[118.09,24.48]}
 const currentCities=computed(()=>allCities[provinces[provIdx.value]]||['选择城市'])
 
-onMounted(async()=>{try{const r=await api.get('/templates/popular',{params:{limit:6}});hotTemplates.value=r.data.data||[]}catch{}})
+onMounted(async()=>{try{const r=await api.get('/templates/popular',{params:{limit:20}});hotTemplates.value=r.data.data||[]}catch{}})
 
 function openCityPick(t){ pickTarget.value=t; provIdx.value=0; cityIdx.value=0; showPicker.value=true }
 function onCityPickConfirm(){ const prov=provinces[provIdx.value]; const cities=currentCities.value; const city=cities[cityIdx.value]; const c=coords[city]; if(pickTarget.value==='start'){ startText.value=city||prov; if(c){startLng.value=c[0];startLat.value=c[1]} }else{ endText.value=city||prov; if(c){endLng.value=c[0];endLat.value=c[1]} } showPicker.value=false }
@@ -137,11 +163,18 @@ async function onGenerate(){
   try{
     const payload={totalDays:totalDays.value,startPoint:{name:startText.value,lng:startLng.value,lat:startLat.value},endPoint:{name:endText.value||startText.value,lng:endLng.value,lat:endLat.value},preferences:{difficulty:difficulty.value,tags:selectedTags.value,dailyDriveHours:dailyHours.value}}
     const r=await api.post('/routes/generate',payload)
-    if(r.data.code===40401){ showToast(r.data.data?.suggestion||'暂无匹配路线，请调整条件'); return }
-    const route=r.data.data; cacheRoute(route.routeId,route); router.push('/route/'+route.routeId)
+    if(r.data.code===40401){ showToast(r.data.message||'暂无匹配路线，请调整条件'); return }
+    const data=r.data.data
+    const all=[]
+    if(data.primary) all.push(data.primary)
+    if(data.alternatives) all.push(...data.alternatives)
+    generatedRoutes.value=all; aiGenerated.value=data.aiGenerated||false
+    all.forEach(rt=>cacheRoute(rt.routeId,rt))
+    showResults.value=true
   }catch(e){ showToast(e.response?.data?.message||'生成失败，请稍后重试') }
   finally{ generating.value=false }
 }
+function selectRoute(r){ cacheRoute(r.routeId,r); router.push('/route/'+r.routeId) }
 </script>
 <style scoped>
 .gen{padding:12px;padding-bottom:80px}.hd{padding:8px}.hd h3{margin:0}
@@ -171,4 +204,20 @@ async function onGenerate(){
 /* Map Picker */
 .map-picker-header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:15px;font-weight:600}
 .map-picker-footer{padding:12px 16px}
+
+/* Route Selection Results */
+.results{padding-bottom:40px}
+.results-hd{text-align:center;padding:16px 0 8px}
+.results-hd h3{margin:0;font-size:18px;color:#333}
+.results-sub{color:#999;font-size:13px;margin:4px 0 0}
+.route-card{position:relative;background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06);cursor:pointer;transition:transform .15s}
+.route-card:active{transform:scale(.98)}
+.route-card.primary{border:2px solid #4CAF50;background:linear-gradient(135deg,#f1f8e9,#fff)}
+.rc-badge{display:inline-block;padding:3px 12px;border-radius:12px;font-size:12px;font-weight:600;margin-bottom:8px}
+.rc-badge:not(.tpl){background:#4CAF50;color:#fff}
+.rc-badge.tpl{background:#E8F5E9;color:#2E7D32}
+.rc-title{font-size:16px;font-weight:600;color:#333;margin-bottom:6px}
+.rc-stats{display:flex;gap:12px;font-size:13px;color:#666;margin-bottom:4px}
+.rc-desc{font-size:12px;color:#999;margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.regen-btn{margin-top:16px;color:#2E7D32;border-color:#2E7D32}
 </style>

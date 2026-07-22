@@ -10,6 +10,7 @@ import com.roadbook.route.dto.RouteDetailResponse.EstimatedCost;
 import com.roadbook.route.dto.RouteDetailResponse.FuelStop;
 import com.roadbook.route.dto.RouteDetailResponse.WaypointDetail;
 import com.roadbook.route.dto.RouteGenerateRequest;
+import com.roadbook.route.dto.RouteGenerateResponse;
 import com.roadbook.route.entity.Route;
 import com.roadbook.route.entity.RouteWaypoint;
 import com.roadbook.route.repository.RouteRepository;
@@ -52,9 +53,9 @@ public class RouteGenerateService {
      *
      * @param userId the authenticated user ID
      * @param req    the generation request with trip parameters
-     * @return detailed route response grouped by day
+     * @return route generation response with primary + alternatives
      */
-    public RouteDetailResponse generate(Long userId, RouteGenerateRequest req) {
+    public RouteGenerateResponse generate(Long userId, RouteGenerateRequest req) {
         // 0. Resolve coordinates if only address/name is provided
         resolveCoordinates(req.getStartPoint());
         resolveCoordinates(req.getEndPoint());
@@ -65,42 +66,77 @@ public class RouteGenerateService {
                 req.getStartPoint().getLat().doubleValue());
         String province = extractProvince(regeo);
 
-        // 2. Try template match first, then AI fallback
         List<String> tags = req.getPreferences() != null ? req.getPreferences().getTags() : Collections.emptyList();
-        RouteTemplate template = templateService.match(province, req.getTotalDays(), tags).orElse(null);
+        String difficulty = req.getPreferences() != null ? req.getPreferences().getDifficulty() : "medium";
+        double dailyHours = req.getPreferences() != null && req.getPreferences().getDailyDriveHours() != null
+                ? req.getPreferences().getDailyDriveHours() : 4.0;
 
-        List<RouteWaypoint> waypoints;
-        Route route;
+        RouteDetailResponse primary = null;
+        boolean aiGenerated = false;
 
-        // Template valid only if the province maps to the template's region
-        boolean templateValid = template != null && regionMatches(province, template.getRegion());
-
-        if (templateValid) {
-            // Template generation
-            templateService.incrementUsage(template.getId());
-            List<TemplateWaypoint> twps = templateService.getWaypoints(template.getId());
-            route = buildRoute(userId, req, template);
-            route = routeRepo.save(route);
-            waypoints = buildWaypoints(route.getId(), twps, req.getPreferences());
-        } else {
-            // AI generation
-            if (template != null) log.info("Template region mismatch: {} != {}, using AI", template.getRegion(), province);
-            AiRouteGenerator.AiRoute aiRoute = aiGenerator.generate(
+        // 2. Always try AI first for the primary recommendation
+        AiRouteGenerator.AiRoute aiRoute = aiGenerator.generate(
                 req.getStartPoint().getName(), req.getEndPoint().getName(),
-                req.getTotalDays(), tags,
-                req.getPreferences() != null ? req.getPreferences().getDifficulty() : "medium",
-                req.getPreferences() != null && req.getPreferences().getDailyDriveHours() != null
-                    ? req.getPreferences().getDailyDriveHours() : 4.0);
-            if (aiRoute == null) {
-                throw new RuntimeException("TEMPLATE_NOT_FOUND");
-            }
-            route = buildRouteFromAi(userId, req, aiRoute);
+                req.getTotalDays(), tags, difficulty, dailyHours);
+        if (aiRoute != null) {
+            Route route = buildRouteFromAi(userId, req, aiRoute);
             route = routeRepo.save(route);
-            waypoints = buildWaypointsFromAi(route.getId(), aiRoute);
+            List<RouteWaypoint> wps = buildWaypointsFromAi(route.getId(), aiRoute);
+            waypointRepo.saveAll(wps);
+            primary = buildResponse(route, wps, req);
+            aiGenerated = true;
+            log.info("AI primary route generated: {}", aiRoute.title());
         }
 
-        waypointRepo.saveAll(waypoints);
-        return buildResponse(route, waypoints, req);
+        // 3. Collect template alternatives (2-3, dedup by name)
+        List<RouteDetailResponse> alternatives = new ArrayList<>();
+        java.util.Set<String> seenNames = new java.util.HashSet<>();
+        if (primary != null) seenNames.add(primary.getTitle());
+
+        // Get best template match + popular alternatives
+        RouteTemplate exactMatch = templateService.match(province, req.getTotalDays(), tags).orElse(null);
+        List<RouteTemplate> candidateTemplates = new ArrayList<>();
+        if (exactMatch != null && regionMatches(province, exactMatch.getRegion())) {
+            candidateTemplates.add(exactMatch);
+        }
+        candidateTemplates.addAll(templateService.getAlternatives(
+                province != null ? province : "四川", req.getTotalDays()));
+
+        for (RouteTemplate t : candidateTemplates.stream().distinct().toList()) {
+            if (seenNames.contains(t.getName())) continue;
+            if (alternatives.size() >= 3) break;
+            seenNames.add(t.getName());
+            try {
+                templateService.incrementUsage(t.getId());
+                List<TemplateWaypoint> twps = templateService.getWaypoints(t.getId());
+                Route altRoute = buildRoute(userId, req, t);
+                altRoute = routeRepo.save(altRoute);
+                List<RouteWaypoint> altWps = buildWaypoints(altRoute.getId(), twps, req.getPreferences());
+                waypointRepo.saveAll(altWps);
+                alternatives.add(buildResponse(altRoute, altWps, req));
+            } catch (Exception e) {
+                log.warn("Failed to build alternative from template {}: {}", t.getId(), e.getMessage());
+            }
+        }
+
+        // 4. If AI failed but we have template alternatives, promote first to primary
+        if (primary == null && !alternatives.isEmpty()) {
+            primary = alternatives.remove(0);
+            aiGenerated = false;
+            log.info("AI failed, using template as primary: {}", primary.getTitle());
+        }
+
+        // 5. If nothing at all, report no match
+        if (primary == null) {
+            throw new RuntimeException("TEMPLATE_NOT_FOUND");
+        }
+
+        return RouteGenerateResponse.builder()
+                .primary(primary)
+                .alternatives(alternatives)
+                .totalOptions(1 + alternatives.size())
+                .aiGenerated(aiGenerated)
+                .build();
     }
 
     // ========== Private helpers ==========

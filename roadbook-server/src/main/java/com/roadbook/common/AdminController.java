@@ -28,12 +28,23 @@ public class AdminController {
     private final PoiRepository poiRepo;
 
     @GetMapping("/stats")
-    public ApiResponse<Map<String, Object>> stats(@RequestAttribute("userId") Long userId) {
+    public ApiResponse<Map<String, Object>> stats() {
+        long totalUsers = userRepo.count();
+        long totalRoutes = routeRepo.count();
+        long totalTemplates = templateRepo.count();
+        long totalPois = poiRepo.count();
+
+        // Count routes by status
+        long publishedRoutes = routeRepo.findAll().stream().filter(r -> r.getStatus() != null && r.getStatus() == 1).count();
+        long recordingRoutes = routeRepo.findAll().stream().filter(r -> r.getStatus() != null && r.getStatus() == 2).count();
+
         return ApiResponse.success(Map.of(
-                "users", userRepo.count(),
-                "routes", routeRepo.count(),
-                "templates", templateRepo.count(),
-                "pois", poiRepo.count()
+                "users", totalUsers,
+                "routes", totalRoutes,
+                "templates", totalTemplates,
+                "pois", totalPois,
+                "publishedRoutes", publishedRoutes,
+                "recordingRoutes", recordingRoutes
         ));
     }
 
@@ -96,8 +107,7 @@ public class AdminController {
      * List all users (admin only).
      */
     @GetMapping("/users")
-    public ApiResponse<?> listUsers(@RequestAttribute("userId") Long userId) {
-        if (!isAdmin(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+    public ApiResponse<?> listUsers() {
         var users = userRepo.findAll().stream().map(u -> Map.of(
             "id", u.getId(), "nickname", u.getNickname(), "phone", u.getPhone() != null ? u.getPhone() : "",
             "role", u.getRole() != null ? u.getRole() : "user",
@@ -107,17 +117,12 @@ public class AdminController {
     }
 
     @PutMapping("/users/{id}/role")
-    public ApiResponse<?> updateUserRole(@RequestAttribute("userId") Long userId, @PathVariable Long id, @RequestBody Map<String, String> body) {
-        if (!isAdmin(userId)) return ApiResponse.error(ErrorCode.FORBIDDEN);
+    public ApiResponse<?> updateUserRole(@PathVariable Long id, @RequestBody Map<String, String> body) {
         var user = userRepo.findById(id).orElse(null);
         if (user == null) return ApiResponse.error(ErrorCode.NOT_FOUND);
         user.setRole(body.getOrDefault("role", "user"));
         userRepo.save(user);
         return ApiResponse.success(Map.of("ok", true));
-    }
-
-    private boolean isAdmin(Long userId) {
-        return userRepo.findById(userId).map(u -> "admin".equals(u.getRole())).orElse(false);
     }
 
     private void setCsvHeaders(HttpServletResponse resp, String filename) {

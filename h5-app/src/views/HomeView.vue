@@ -43,6 +43,7 @@
     <van-overlay :show="showGuide">
       <div class="guide">
         <div class="guide-inner">
+          <van-icon name="cross" class="guide-close" @click="closeGuide" />
           <div class="guide-steps">
             <span v-for="i in 3" :key="i" class="gstep-dot" :class="{on: guideStep===i}"></span>
           </div>
@@ -67,7 +68,7 @@
       </div>
     </van-overlay>
 
-    <van-dialog v-model:show="showPreview" :title="previewTpl?.name" confirm-button-text="查看详情" @confirm="goTemplateDetail">
+    <van-dialog v-model:show="showPreview" :title="previewTpl?.name" confirm-button-text="查看详情" @confirm="goTemplateDetail" show-cancel-button>
       <div class="tpl-preview" v-if="previewTpl">
         <p><b>区域:</b> {{previewTpl.region}}</p>
         <p><b>天数:</b> {{previewTpl.totalDays}} 天</p>
@@ -98,7 +99,7 @@ async function fetchRoutes(){
   try{const params={size:20,sortBy:sortBy.value,sortDir:sortDir.value};if(keyword.value)params.keyword=keyword.value;const r=await api.get('/routes',{params});routes.value=r.data.data?.content||[]}catch{}
 }
 async function fetchAll(){await fetchRoutes()
-  try{const r=await api.get('/templates/popular',{params:{limit:6}});hotRoutes.value=r.data.data||[]}catch{}
+  try{const r=await api.get('/templates/popular',{params:{limit:20}});hotRoutes.value=r.data.data||[]}catch{}
   loading.value=false
 }
 onMounted(fetchAll)
@@ -129,4 +130,17 @@ function onRouteClick(r){if(compareMode.value)toggleSelect(r.id);else if(r.statu
 .hc-img{height:70px;background:linear-gradient(135deg,#C8E6C9,#A5D6A7);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:700;color:#2E7D32;margin-bottom:8px}
 .hn{font-size:13px;font-weight:600;color:#333;padding:0 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hm{font-size:11px;color:#999;padding:2px 10px 0}
+/* Guide Overlay */
+.guide{display:flex;align-items:center;justify-content:center;height:100%;padding:20px}
+.guide-inner{position:relative;background:#fff;border-radius:16px;padding:32px 24px 20px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.15)}
+.guide-close{position:absolute;top:12px;right:12px;font-size:18px;color:#999;cursor:pointer}
+.guide-steps{display:flex;justify-content:center;gap:8px;margin-bottom:16px}
+.gstep-dot{width:8px;height:8px;border-radius:50%;background:#ddd;transition:background .2s}
+.gstep-dot.on{background:#2E7D32;width:24px;border-radius:4px}
+.guide-inner h3{font-size:18px;color:#333;margin:0 0 8px}
+.guide-inner p{font-size:14px;color:#666;line-height:1.6;margin:0 0 16px}
+.guide-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.gprev{font-size:13px;color:#999;cursor:pointer}
+.tpl-preview{padding:8px 16px 16px}.tpl-preview p{margin:6px 0;font-size:14px;color:#555}
+.comp-bar{display:flex;align-items:center;gap:8px;margin-top:4px}.comp-hint{font-size:12px;color:#999}
 </style>

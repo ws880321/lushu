@@ -1,4 +1,6 @@
 <view class="container">
+<!-- Form (hidden when results shown) -->
+<block wx:if="{{!showResults}}">
   <!-- Card 1: 起终点 -->
   <view class="card">
     <view class="card-title">📍 起终点</view>
@@ -85,5 +87,28 @@
         </picker-view-column>
       </picker-view>
     </view>
+  </view>
+</block>
+
+  <!-- Route Selection Results -->
+  <view class="results-container" wx:if="{{showResults}}">
+    <view class="results-hd">
+      <text class="rh-title">🎉 为您规划了 {{generatedRoutes.length}} 条路线</text>
+      <text class="rh-sub">点击选择一条查看详情</text>
+    </view>
+    <view wx:for="{{generatedRoutes}}" wx:key="routeId"
+          class="route-card {{index === 0 && aiGenerated ? 'primary' : ''}}"
+          data-route="{{item}}" bindtap="selectRoute">
+      <view class="rc-badge" wx:if="{{index === 0 && aiGenerated}}">🤖 AI 推荐</view>
+      <view class="rc-badge tpl" wx:elif="{{index === 0}}">⭐ 最佳匹配</view>
+      <text class="rc-title">{{item.title}}</text>
+      <view class="rc-stats">
+        <text>{{item.totalDays}}天</text>
+        <text>{{item.totalDistanceKm || '?'}}km</text>
+        <text wx:if="{{item.estimatedCost}}">¥{{item.estimatedCost.totalYuan}}</text>
+      </view>
+      <text class="rc-desc" wx:if="{{item.description}}">{{item.description}}</text>
+    </view>
+    <button bindtap="backToForm" class="regen-btn">重新生成</button>
   </view>
 </view>

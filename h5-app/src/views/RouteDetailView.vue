@@ -65,7 +65,7 @@
       <WaypointCard v-for="(w,i) in currentDay.waypoints" :key="i" :name="w.name" :type="w.type" :arrival="w.arrival" :departure="w.departure" :tips="w.description||w.tips" :distanceFromPrevKm="w.distanceFromPrevKm" :stayMin="w.stayMin" :isLast="i===currentDay.waypoints.length-1" @click="onWaypointClick(w)" />
     </div>
     
-    <van-dialog v-model:show="showDialog" :title="selectedWp?.name">
+    <van-dialog v-model:show="showDialog" :title="selectedWp?.name" show-cancel-button>
       <div class="dlg-body" v-if="selectedWp">
         <div class="dlg-type"><van-tag :type="typeTag(selectedWp.type)" size="medium">{{typeLabel(selectedWp.type)}}</van-tag></div>
         <p class="dlg-info">{{selectedWp.description||selectedWp.tips||'暂无详细信息'}}</p>
