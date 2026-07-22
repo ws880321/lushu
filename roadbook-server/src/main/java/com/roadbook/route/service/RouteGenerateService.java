@@ -150,42 +150,47 @@ public class RouteGenerateService {
      */
     private void matchPois(List<RouteWaypoint> wps) {
         if (wps == null || wps.isEmpty()) return;
+        try {
         List<Poi> allPois = poiRepo.findAll();
+        log.info("matchPois: {} POIs loaded, {} waypoints to match", allPois.size(), wps.size());
         if (allPois.isEmpty()) return;
 
         for (RouteWaypoint wp : wps) {
-            if (wp.getLng() == null || wp.getLat() == null) continue;
             String name = wp.getName();
             if (name == null) name = "";
-            BigDecimal wpLng = wp.getLng();
-            BigDecimal wpLat = wp.getLat();
 
             Poi best = null;
-            double bestScore = Double.MAX_VALUE;
+            double bestDist = Double.MAX_VALUE;
 
             for (Poi p : allPois) {
-                double d = dist(p.getLng(), p.getLat(), wpLng, wpLat);
-
-                // Name bonus: if POI name appears in waypoint name (or vice versa)
-                double nameBonus = 0;
                 String pName = p.getName();
-                if (pName != null && (name.contains(pName) || pName.contains(name))) {
-                    nameBonus = 0.5; // halve the distance weight
+                if (pName == null) continue;
+
+                // Exact/substring name match: use immediately, no distance check needed
+                if (name.contains(pName) || pName.contains(name)) {
+                    best = p;
+                    bestDist = 0;
+                    break;
                 }
 
-                double score = d * (1 - nameBonus);
-                if (score < bestScore && d < 50000) { // within 50km
-                    bestScore = score;
+                // Otherwise check coordinate proximity (50km threshold)
+                if (wp.getLng() == null || wp.getLat() == null) continue;
+                double d = dist(p.getLng(), p.getLat(), wp.getLng(), wp.getLat());
+                if (d < bestDist && d < 50000) {
+                    bestDist = d;
                     best = p;
                 }
             }
 
             if (best != null) {
                 wp.setPoiId(best.getId());
-                log.debug("Matched waypoint '{}' to POI '{}' ({}m)", name, best.getName(), (int)dist(best.getLng(), best.getLat(), wpLng, wpLat));
+                log.info("Matched waypoint '{}' to POI '{}'", name, best.getName());
             }
         }
         waypointRepo.saveAll(wps);
+        } catch (Exception e) {
+            log.warn("POI matching failed: {}", e.getMessage());
+        }
     }
 
     private double dist(BigDecimal lng1, BigDecimal lat1, BigDecimal lng2, BigDecimal lat2) {

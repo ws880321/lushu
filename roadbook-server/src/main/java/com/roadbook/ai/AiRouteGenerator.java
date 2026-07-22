@@ -54,7 +54,7 @@ public class AiRouteGenerator {
     private String buildPrompt(String start, String end, int days, List<String> tags,
                                 String diff, double hours) {
         return String.format("""
-            为中国自驾游生成路线规划JSON：
+            为中国自驾游生成路线规划JSON（waypoints必须是单个数组包含所有天的途经点）：
 
             起点：%s | 终点：%s | 天数：%d | 偏好：%s | 难度：%s | 日驾驶≤%.0fh
 
@@ -63,6 +63,7 @@ public class AiRouteGenerator {
              "tips":"停车/路况/门票建议","stayMin":停留分钟}]}
 
             要求：每天4-8个途经点、地点真实可查、总里程合理、tips实用。
+            waypoints是单个JSON数组，按day字段区分每天，不要分成多个数组。
             只返回JSON，不要加```标记或解释文字。""",
             start, end, days, tags != null ? String.join(",", tags) : "", diff, hours, days);
     }
