@@ -23,7 +23,7 @@ public class User {
     @Column(length = 512)
     private String avatarUrl;
 
-    @Column(length = 20)
+    @Column(length = 20, unique = true)
     private String phone;
 
     @Column(nullable = false, length = 16)

@@ -18,6 +18,8 @@ import com.roadbook.route.repository.RouteWaypointRepository;
 import com.roadbook.template.entity.RouteTemplate;
 import com.roadbook.template.entity.TemplateWaypoint;
 import com.roadbook.template.service.TemplateService;
+import com.roadbook.poi.entity.Poi;
+import com.roadbook.poi.repository.PoiRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,7 @@ public class RouteGenerateService {
     private final RouteRepository routeRepo;
     private final RouteWaypointRepository waypointRepo;
     private final AiRouteGenerator aiGenerator;
+    private final PoiRepository poiRepo;
 
     /**
      * Generate a complete route (roadbook) for the user.
@@ -83,6 +86,7 @@ public class RouteGenerateService {
             route = routeRepo.save(route);
             List<RouteWaypoint> wps = buildWaypointsFromAi(route.getId(), aiRoute);
             waypointRepo.saveAll(wps);
+            matchPois(wps);
             primary = buildResponse(route, wps, req);
             aiGenerated = true;
             log.info("AI primary route generated: {}", aiRoute.title());
@@ -113,6 +117,7 @@ public class RouteGenerateService {
                 altRoute = routeRepo.save(altRoute);
                 List<RouteWaypoint> altWps = buildWaypoints(altRoute.getId(), twps, req.getPreferences());
                 waypointRepo.saveAll(altWps);
+                matchPois(altWps);
                 alternatives.add(buildResponse(altRoute, altWps, req));
             } catch (Exception e) {
                 log.warn("Failed to build alternative from template {}: {}", t.getId(), e.getMessage());
@@ -137,6 +142,56 @@ public class RouteGenerateService {
                 .totalOptions(1 + alternatives.size())
                 .aiGenerated(aiGenerated)
                 .build();
+    }
+
+    /**
+     * For each waypoint, find the nearest POI by name substring match or coordinate proximity,
+     * and link it so drive/parking/road scores show up in the route detail dialog.
+     */
+    private void matchPois(List<RouteWaypoint> wps) {
+        if (wps == null || wps.isEmpty()) return;
+        List<Poi> allPois = poiRepo.findAll();
+        if (allPois.isEmpty()) return;
+
+        for (RouteWaypoint wp : wps) {
+            if (wp.getLng() == null || wp.getLat() == null) continue;
+            String name = wp.getName();
+            if (name == null) name = "";
+            BigDecimal wpLng = wp.getLng();
+            BigDecimal wpLat = wp.getLat();
+
+            Poi best = null;
+            double bestScore = Double.MAX_VALUE;
+
+            for (Poi p : allPois) {
+                double d = dist(p.getLng(), p.getLat(), wpLng, wpLat);
+
+                // Name bonus: if POI name appears in waypoint name (or vice versa)
+                double nameBonus = 0;
+                String pName = p.getName();
+                if (pName != null && (name.contains(pName) || pName.contains(name))) {
+                    nameBonus = 0.5; // halve the distance weight
+                }
+
+                double score = d * (1 - nameBonus);
+                if (score < bestScore && d < 50000) { // within 50km
+                    bestScore = score;
+                    best = p;
+                }
+            }
+
+            if (best != null) {
+                wp.setPoiId(best.getId());
+                log.debug("Matched waypoint '{}' to POI '{}' ({}m)", name, best.getName(), (int)dist(best.getLng(), best.getLat(), wpLng, wpLat));
+            }
+        }
+        waypointRepo.saveAll(wps);
+    }
+
+    private double dist(BigDecimal lng1, BigDecimal lat1, BigDecimal lng2, BigDecimal lat2) {
+        double dx = (lng1.doubleValue() - lng2.doubleValue()) * 85390;
+        double dy = (lat1.doubleValue() - lat2.doubleValue()) * 111320;
+        return Math.sqrt(dx * dx + dy * dy);
     }
 
     // ========== Private helpers ==========

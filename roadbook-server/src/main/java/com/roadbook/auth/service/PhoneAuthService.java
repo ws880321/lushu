@@ -56,9 +56,10 @@ public class PhoneAuthService {
 
         String openid = "phone_" + phone;
 
-        User user = userRepository.findByOpenid(openid).orElseGet(() -> {
+        User user = userRepository.findByPhone(phone).orElseGet(() -> {
             User newUser = new User();
             newUser.setOpenid(openid);
+            newUser.setPhone(phone);
             newUser.setNickname(nickname != null ? nickname : "自驾用户");
             newUser.setMembership(0);
             return newUser;
@@ -66,6 +67,8 @@ public class PhoneAuthService {
 
         if (nickname != null) user.setNickname(nickname);
         user.setUpdatedAt(LocalDateTime.now());
+        user.setOpenid(openid); // keep openid in sync
+        user.setPhone(phone);
         user = userRepository.save(user);
 
         String token = generateToken(user);

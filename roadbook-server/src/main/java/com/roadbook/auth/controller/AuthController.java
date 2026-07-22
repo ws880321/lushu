@@ -31,7 +31,14 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<?> me(@RequestAttribute("userId") Long userId) {
+    public ApiResponse<?> me(@RequestHeader(value = "Authorization", required = false) String auth) {
+        Long userId = null;
+        if (auth != null && auth.startsWith("Bearer ")) {
+            try {
+                userId = wechatAuthService.parseUserId(auth.substring(7));
+            } catch (Exception ignored) {}
+        }
+        if (userId == null) return ApiResponse.error(ErrorCode.UNAUTHORIZED, "未登录");
         User user = userRepo.findById(userId).orElse(null);
         if (user == null) return ApiResponse.error(ErrorCode.NOT_FOUND, "用户不存在");
         return ApiResponse.success(Map.of(

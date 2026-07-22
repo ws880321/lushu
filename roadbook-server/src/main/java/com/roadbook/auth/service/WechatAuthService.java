@@ -58,6 +58,10 @@ public class WechatAuthService {
 
         if (nickname != null) user.setNickname(nickname);
         if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
+        // Admin login gets admin role
+        if (code != null && code.startsWith("admin_")) {
+            user.setRole("admin");
+        }
         user.setUpdatedAt(LocalDateTime.now());
         user = userRepository.save(user);
 
