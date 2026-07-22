@@ -18,6 +18,16 @@ const routes = [
         component: () => import('../views/Dashboard.vue'),
       },
       {
+        path: 'users',
+        name: 'UserList',
+        component: () => import('../views/UserList.vue'),
+      },
+      {
+        path: 'routes',
+        name: 'RouteList',
+        component: () => import('../views/RouteList.vue'),
+      },
+      {
         path: 'templates',
         name: 'TemplateList',
         component: () => import('../views/TemplateList.vue'),
